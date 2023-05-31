@@ -292,13 +292,15 @@ def explore(hr : HitmanReferee, status :  dict[str, Union[str, int, tuple[int, i
         # Calcul le point le plus proche, non visité
         to_visit = min(not_visited, key=lambda point: (point[0] - position[0]) ** 2 + (point[1] - position[1]) ** 2)
 
+        print(f"To visit : {to_visit}")
         if(to_visit in neighbours):
             status = lookAt(hr,position,status['orientation'],to_visit)
         else :
             path = findPaths(position,to_visit)
-            print(path)
+            print(f"Path : {path}")
         pprint(generateGrid())
-        pprint(to_visit)
+
+        print("****************************************************************")
 
 def findPaths(start, end):
     paths = []
