@@ -104,7 +104,7 @@ def generateGrid() -> GridClear :
             elif content == HC.WALL:
                 grid[i][j]= "WAL"
             elif content == HC.TARGET:
-                grid[i][j] = " TAR "
+                grid[i][j] = "TAR"
 
     grid.reverse()
     return grid
@@ -185,38 +185,7 @@ def getNeighbours(position : Tuple[int,int]) -> List[Tuple[int, int]]:
         neighbours.append((position[0]+1, position[1]))
     return neighbours
 
-"""
-explorer(graphe G, sommet s)
-      marquer le sommet s
-      afficher(s)
-      pour tout sommet t voisin du sommet s
-            si t n'est pas marqué alors
-                   explorer(G, t);
 
-parcoursProfondeur(graphe G)
-      pour tout sommet s du graphe G
-            si s n'est pas marqué alors
-                   explorer(G, s)
-                   
-fonction parcoursPlateau(plateau, position):
-    créer une pile de cases à visiter
-    empiler la position de départ sur la pile
-    
-    tant que la pile n'est pas vide:
-        case_actuelle = dépiler la pile
-        
-        si case_actuelle n'est pas une case visitée:
-            marquer la case_actuelle comme visitée
-            effectuer les actions nécessaires sur la case (par exemple, récupérer le contenu, effectuer une action spécifique, etc.)
-            
-            pour chaque direction dans [haut, bas, gauche, droite]:
-                nouvelle_position = calculerPositionSuivante(case_actuelle, direction)
-                si nouvelle_position est une case valide sur le plateau et n'est pas une case visitée:
-                    empiler nouvelle_position sur la pile
-    
-fonction calculerPositionSuivante(position, direction):
-    déplacer la position dans la direction spécifiée
-"""
 
 def lookAt(hr : HitmanReferee,position : Tuple[int,int],orientation : HC,neighbour : Tuple[int,int]) -> dict[str, Union[str, int, tuple[int, int], HC, list[tuple[tuple[int, int], HC]]]]:
     if(neighbour[0]==position[0]-1):
@@ -271,41 +240,56 @@ def lookAt(hr : HitmanReferee,position : Tuple[int,int],orientation : HC,neighbo
 
 
 def explore(hr : HitmanReferee, status :  dict[str, Union[str, int, tuple[int, int], HC, list[tuple[tuple[int, int], HC]]]]) -> NoReturn :
+
     global known_cells
     position : Tuple[int,int] = status['position']
-
+    path = []
     while(None in known_cells.values()):
         # Cellule de départ placée à empty
-        if known_cells[position]==None :  known_cells[position] = HC.EMPTY
 
+        if known_cells[position]==None :  known_cells[position] = HC.EMPTY
         # On récupère la vision
         for cell in status['vision']:
             known_cells[tuple(cell[0])] = HC(cell[1])
             checkGuard(tuple(cell[0]),HC(cell[1]))
             checkCivil(tuple(cell[0]),HC(cell[1]))
+        if(None not in known_cells.values()) : break
 
+        if(len(path) ==0 or known_cells[path[len(path)-1]]!=None) :
+            # On détermine les voisins
+            neighbours = getNeighbours(position)
+            # Calcul des cellules inconnues
+            not_visited = [cell for cell in known_cells if known_cells[cell] == None]
+            # Calcul le point le plus proche, non visité
+            to_visit = min(not_visited, key=lambda point: (point[0] - position[0]) ** 2 + (point[1] - position[1]) ** 2)
+            print(f"To visit : {to_visit}")
+            if(to_visit in neighbours):
+                status = lookAt(hr,position,status['orientation'],to_visit)
+            else :
+                path = findPaths(position,to_visit)[0]
+                # faire contrôle si on est obligé de passer par la vue d'un garde
 
-        # On détermine les voisins
-        neighbours = getNeighbours(position)
-        # Calcul des cellules inconnues
-        not_visited = [cell  for cell in known_cells if known_cells[cell]== None]
-        # Calcul le point le plus proche, non visité
-        to_visit = min(not_visited, key=lambda point: (point[0] - position[0]) ** 2 + (point[1] - position[1]) ** 2)
-
-        print(f"To visit : {to_visit}")
-        if(to_visit in neighbours):
-            status = lookAt(hr,position,status['orientation'],to_visit)
         else :
-            path = findPaths(position,to_visit)
-            print(f"Path : {path}")
+            status = lookAt(hr,position,status["orientation"],path[path.index(position)+1])
+            position = status["position"]
+
         pprint(generateGrid())
+        print(f"Current path : {path}")
+        pprint(status)
 
         print("****************************************************************")
+    pprint(generateGrid())
+    print(f"Map explored ? : {hr.send_content(known_cells)}")
+
+
 
 def findPaths(start, end):
     paths = []
     explorePaths(start, end, [], paths)
+
     paths = sorted(paths, key=len)
+    for path in paths :
+        print(path)
     return paths
 
 def explorePaths(current, end, path, paths):
@@ -323,9 +307,14 @@ def explorePaths(current, end, path, paths):
         # Explorer chaque mouvement possible
         for move in next_moves:
             # Si le chemin passe par une cellule à éviter, on ne continue pas sur cette cellule
-            if move!=end and (guards_field_of_view[move]==True or known_cells[move] in [HC.WALL,HC.GUARD_S,HC.GUARD_E,HC.GUARD_N,HC.GUARD_W]):
-                break
-            if move not in path:  # Vérifier si le mouvement a déjà été exploré
+            # or guards_field_of_view[move]==True il faut faire en sorte d'éviter ces cases
+            if move!=end and (known_cells[move] in [None,HC.WALL,HC.GUARD_S,HC.GUARD_E,HC.GUARD_N,HC.GUARD_W] or guards_field_of_view[move]==True):
+                continue
+
+            elif( paths!=[]and len(path)+1 > len(min(paths, key=len))):
+                # On évite les chemins plus longs que les chemins existants
+                continue
+            elif move not in path:  # Vérifier si le mouvement a déjà été exploré
                 explorePaths(move, end, path, paths)
 
 
