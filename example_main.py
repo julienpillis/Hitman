@@ -3,14 +3,20 @@ from pprint import pprint
 from constraints import *
 
 
+
+
+
+
 def main():
+
+
     hr = HitmanReferee()
     status = hr.start_phase1()
     #pprint(status)
     launch_solving(status['m'],status['n'],status['guard_count'],status['civil_count'])
     explore(hr,status)
-
-    """
+"""
+    
     status = hr.turn_clockwise()
     pprint(status)
     explore(hr, status)

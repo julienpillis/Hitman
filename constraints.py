@@ -287,6 +287,69 @@ def explore(hr : HitmanReferee, status :  dict[str, Union[str, int, tuple[int, i
 
         # On détermine les voisins
         neighbours = getNeighbours(position)
+        # Calcul des cellules inconnues
+        not_visited = [cell  for cell in known_cells if known_cells[cell]== None]
+        # Calcul le point le plus proche, non visité
+        to_visit = min(not_visited, key=lambda point: (point[0] - position[0]) ** 2 + (point[1] - position[1]) ** 2)
+
+        if(to_visit in neighbours):
+            status = lookAt(hr,position,status['orientation'],to_visit)
+        else :
+            path = findPaths(position,to_visit)
+            print(path)
+        pprint(generateGrid())
+        pprint(to_visit)
+
+def findPaths(start, end):
+    paths = []
+    explorePaths(start, end, [], paths)
+    paths = sorted(paths, key=len)
+    return paths
+
+def explorePaths(current, end, path, paths):
+    global known_cells
+    global guards_field_of_view
+
+    path.append(current)    # Ajouter la cellule au chemin
+
+    if current == end:
+        paths.append(list(path))  # Ajouter une copie du chemin à la liste des chemins
+    else:
+        # Générer tous les mouvements possibles
+        next_moves = generateNextMoves(current)
+
+        # Explorer chaque mouvement possible
+        for move in next_moves:
+            # Si le chemin passe par une cellule à éviter, on ne continue pas sur cette cellule
+            if move!=end and (guards_field_of_view[move]==True or known_cells[move] in [HC.WALL,HC.GUARD_S,HC.GUARD_E,HC.GUARD_N,HC.GUARD_W]):
+                break
+            if move not in path:  # Vérifier si le mouvement a déjà été exploré
+                explorePaths(move, end, path, paths)
+
+
+    # Retirer la dernière position explorée pour revenir en arrière
+    path.pop()
+
+def generateNextMoves(current):
+    global largeur_mat
+    global hauteur_mat
+    x, y = current
+    next_moves = []
+
+
+    # Générer les mouvements possibles : droite, gauche, haut, bas
+    if x < largeur_mat - 1:
+        next_moves.append((x + 1, y))  # Droite
+    if x > 0:
+        next_moves.append((x - 1, y))  # Gauche
+    if y < hauteur_mat - 1:
+        next_moves.append((x, y + 1))  # Haut
+    if y > 0:
+        next_moves.append((x, y - 1))  # Bas
+
+    return next_moves
+
+
 
 
 
