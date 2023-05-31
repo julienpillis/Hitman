@@ -8,14 +8,30 @@ from constraints import *
 
 
 def main():
+    hr = HitmanReferee()
+    status = hr.start_phase1()
+    # pprint(status)
+    launch_solving(status['m'], status['n'], status['guard_count'], status['civil_count'])
+    #print(cell_to_variable((3,4),HC.EMPTY))
+    #print(variable_to_cell(cell_to_variable((3,4),HC.EMPTY)))
 
+    kb = generate_constraints()
+    print(kb)
+    #print(cell_to_variable((6,5),HC.PIANO_WIRE))
+    dimacs = clauses_to_dimacs(kb,13)
+    write_dimacs_file(dimacs,"hitman.cnf")
+    #print(dimacs)
+    #print(exec_gophersat("hitman.cnf"))
+    rebuild(exec_gophersat("hitman.cnf")[1])
+    #print(variable_to_cell(1092))
 
+"""
     hr = HitmanReferee()
     status = hr.start_phase1()
     #pprint(status)
     launch_solving(status['m'],status['n'],status['guard_count'],status['civil_count'])
     explore(hr,status)
-"""
+    
     
     status = hr.turn_clockwise()
     pprint(status)

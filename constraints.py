@@ -2,6 +2,8 @@ from itertools import combinations
 from hitman.hitman import HC, HitmanReferee, complete_map_example
 from pprint import pprint
 from typing import *
+import subprocess
+from math import sqrt
 
 
 GridClear = List[List[str]]
@@ -67,7 +69,7 @@ def generateUnknownCells() -> NoReturn :
             civils_field_of_view[(i,j)] = None
 
 ############################################### AFFICHAGE ###############################################
-def generateGrid() -> GridClear :
+def generateGrid(gridContent : Dict[Tuple[int,int],HC]) -> GridClear :
     """ Generates the grid with know information """
     grid : GridClear = []
     for _ in range(hauteur_mat) :
@@ -75,7 +77,7 @@ def generateGrid() -> GridClear :
 
     for i in range(hauteur_mat):
         for j in range(largeur_mat):
-            content : HC = known_cells[(j,i)]
+            content : HC = gridContent[(j,i)]
             if content == HC.EMPTY :
                 grid[i][j] = "___"
             elif content == HC.CIVIL_E :
@@ -282,11 +284,11 @@ def explore(hr : HitmanReferee, status :  dict[str, Union[str, int, tuple[int, i
             status = lookAt(hr,position,status["orientation"],path[path.index(position)+1])
             position = status["position"]
 
-        pprint(generateGrid())
+        pprint(generateGrid(known_cells))
         print(f"Current path : {path}")
         pprint(status)
         print("****************************************************************")
-    pprint(generateGrid())
+    pprint(generateGrid(known_cells))
     print(f"Map explored ? : {hr.send_content(known_cells)}")
 
 def unreachable(cell : Tuple[int,int]):
@@ -366,69 +368,114 @@ def launch_solving(hauteur : int, largeur : int, nb_guardes : int, nb_civils : i
 
 
 def init_solving(hauteur : int, largeur : int, nb_guardes : int, nb_civils : int):
+    global taille_mat
+
     set_hauteur_mat(hauteur)
     set_largeur_mat(largeur)
     set_guard_count(nb_guardes)
     set_civil_count(nb_civils)
     generateUnknownCells()
-
+    taille_mat = hauteur_mat*largeur_mat
 
 ############################################### CONTRAINTES ###############################################
 
 
-def cell_to_variable(m: int, n: int, val: int) -> PropositionnalVariable:
+def cell_to_variable(cell : Tuple[int,int],content : HC) -> PropositionnalVariable:
     """Transforme une cellule en variable sous format DIMACS (entier)"""
-    # définie de 0 à m*n -1 (m*n taille de la matrice)
-    return taille_mat*val + m*largeur_mat + n + 1
+    return taille_mat*(content.value - 1) + cell[0]*hauteur_mat + cell[1] + 1
 
 
-def variable_to_cell(i: int) -> Tuple[int, int, int]:
+def variable_to_cell(i: int) -> Tuple[int, int, HC]:
     """Transforme une variable en cellule"""
-    return (((i - 1) % taille_mat) // largeur_mat, (i - 1) % largeur_mat,(i - 1) // taille_mat)
+    return ((i - 1) % largeur_mat,((i - 1) % taille_mat) // largeur_mat, HC(((i - 1) // taille_mat)+1))
 
 def at_least_one(variables: List[PropositionnalVariable]) -> Clause:
     clause = variables[:]
     return clause
 
 def unique(variables: List[PropositionnalVariable]) -> ClauseBase:
-    #kb = [at_least_one(variables)]
     kb = []
     for v1,v2 in list(combinations(variables, 2)) :
-        #kb.append([v1, v2]) #pour verif
         kb.append([-v1,-v2])
     return kb
 
 
 def create_cell_constraints() -> ClauseBase:
     kb = []
-    for row in range(hauteur_mat):
-        for col in range(largeur_mat):
+    for col in range(largeur_mat):
+        for row in range(hauteur_mat):
             list = []
-            for val in range(1,6):
-                list.append(cell_to_variable(row, col, val))
+            for var in [HC.EMPTY,HC.SUIT,HC.WALL,HC.TARGET,HC.GUARD_S,HC.GUARD_N,HC.GUARD_W,HC.GUARD_E,HC.CIVIL_S,HC.CIVIL_N,HC.CIVIL_W,HC.CIVIL_E,HC.PIANO_WIRE]:
+                list.append(cell_to_variable((col, row),var))
+            kb.append(at_least_one(list))
             kb += unique(list)
     return kb
 
 
 def create_objects_constraints()  -> ClauseBase :
     kb = []
-    for obj in (1,2) :
+    # corde et déguisement
+    for obj in [HC.PIANO_WIRE,HC.TARGET,HC.SUIT] :
         list = []
         for row in range(hauteur_mat):
             for col in range(largeur_mat):
-                list.append(cell_to_variable(row, col, obj))
+                list.append(cell_to_variable((row, col), obj))
         kb.append(at_least_one(list))
         kb += unique(list)
     return kb
 
-def create_cible_constraints() -> ClauseBase :
-
+def create_vision_constraints() -> ClauseBase :
+    # Si un regard alors aucun autre
     kb = []
-    list = []
-    for row in range(hauteur_mat):
-        for col in range(largeur_mat):
-            list.append(cell_to_variable(row, col, 3))
-    kb.append(at_least_one(list))
-    kb += unique(list)
+    for col in range(largeur_mat):
+        for row in range(hauteur_mat):
+            list = []
+            for var in [HC.GUARD_W,HC.GUARD_E,HC.GUARD_N,HC.GUARD_S]:
+                list.append(cell_to_variable((col, row), var))
+            kb += unique(list)
+            for var in [HC.CIVIL_W, HC.CIVIL_E, HC.CIVIL_N, HC.CIVIL_S]:
+                list.append(cell_to_variable((col, row), var))
+            kb += unique(list)
     return kb
 
+def generate_constraints():
+    kb = create_vision_constraints() + create_cell_constraints() + create_objects_constraints()
+    return kb
+
+def clauses_to_dimacs(clauses: ClauseBase, nb_vars: int) -> str :
+
+    file = f"p cnf {13*taille_mat} {len(clauses)}\n"
+    for clause in clauses :
+        for lit in clause:
+            file +=f"{lit} "
+        file+="0\n"
+    return file
+
+def write_dimacs_file(dimacs: str, filename: str):
+    with open(filename, "w", newline="") as cnf:
+        cnf.write(dimacs)
+
+
+def exec_gophersat(filename: str, cmd: str = "gophersat", encoding: str = "utf8") -> Tuple[bool, List[int]]:
+    result = subprocess.run([cmd,filename], capture_output=True, check=True, encoding=encoding)
+    string = str(result.stdout)
+    lines = string.splitlines()
+
+    if lines[1] != "s SATISFIABLE":
+        return False, []
+
+    model = lines[2][2:-2].split(" ")
+
+    return True, [int(x) for x in model]
+
+def rebuild(model:Model):
+    solved = {}
+    n = 0
+    for var in model :
+        if var > 0:
+            n+=1
+            cell = variable_to_cell(var)
+            solved[(cell[0],cell[1])] = cell[2]
+
+    print("Porblème résolu : ")
+    pprint(generateGrid(solved))
