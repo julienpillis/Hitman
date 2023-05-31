@@ -2,9 +2,6 @@ from itertools import combinations
 from hitman.hitman import HC, HitmanReferee, complete_map_example
 from pprint import pprint
 from typing import *
-from collections import deque
-from math import *
-import subprocess
 
 
 GridClear = List[List[str]]
@@ -174,13 +171,13 @@ def getNeighbours(position : Tuple[int,int]) -> List[Tuple[int, int]]:
     if (position[0] > 0):
         #  and known_cells[(position[0] - 1, position[1])] == None
         neighbours.append((position[0] - 1, position[1]))
-    if (position[1] < largeur_mat - 1):
+    if (position[1] < hauteur_mat - 1):
         #  and known_cells[(position[0] , position[1] +1)] == None
         neighbours.append((position[0], position[1]+1))
     if (position[1] > 0):
         #  and known_cells[(position[0], position[1] - 1)] == None
         neighbours.append((position[0], position[1] - 1))
-    if (position[0] < hauteur_mat - 1 ):
+    if (position[0] < largeur_mat - 1 ):
         #  and known_cells[(position[0] + 1, position[1])] == None
         neighbours.append((position[0]+1, position[1]))
     return neighbours
@@ -246,6 +243,7 @@ def explore(hr : HitmanReferee, status :  dict[str, Union[str, int, tuple[int, i
     path = []
     while(None in known_cells.values()):
         # Cellule de départ placée à empty
+        print(status)
 
         if known_cells[position]==None :  known_cells[position] = HC.EMPTY
         # On récupère la vision
@@ -253,13 +251,24 @@ def explore(hr : HitmanReferee, status :  dict[str, Union[str, int, tuple[int, i
             known_cells[tuple(cell[0])] = HC(cell[1])
             checkGuard(tuple(cell[0]),HC(cell[1]))
             checkCivil(tuple(cell[0]),HC(cell[1]))
+        # Si on connait toutes les cellules, on arrête
         if(None not in known_cells.values()) : break
 
+        # Si on n'a pas de trajectoire à effectuer ou que le contenu de la prochaine cellule est connue
         if(len(path) ==0 or known_cells[path[len(path)-1]]!=None) :
+
             # On détermine les voisins
             neighbours = getNeighbours(position)
+
             # Calcul des cellules inconnues
-            not_visited = [cell for cell in known_cells if known_cells[cell] == None]
+            not_visited_tmp = [cell for cell in known_cells.keys() if known_cells[cell] == None]
+            not_visited = []
+
+            #Tri des cellules accessibles
+            for i in range(len(not_visited_tmp)):
+                if not unreachable(not_visited_tmp[i]) : not_visited.append(not_visited_tmp[i])
+
+
             # Calcul le point le plus proche, non visité
             to_visit = min(not_visited, key=lambda point: (point[0] - position[0]) ** 2 + (point[1] - position[1]) ** 2)
             print(f"To visit : {to_visit}")
@@ -276,23 +285,29 @@ def explore(hr : HitmanReferee, status :  dict[str, Union[str, int, tuple[int, i
         pprint(generateGrid())
         print(f"Current path : {path}")
         pprint(status)
-
         print("****************************************************************")
     pprint(generateGrid())
     print(f"Map explored ? : {hr.send_content(known_cells)}")
 
+def unreachable(cell : Tuple[int,int]):
+    """ Determines if a cell is unreachable (no known and reachable neighbours)"""
+    for neighbour in getNeighbours(cell) :
+        print(neighbour)
+        if known_cells[neighbour] not in [None,HC.WALL,HC.GUARD_S,HC.GUARD_E,HC.GUARD_N,HC.GUARD_W] :
+            return False
+    return True
 
 
-def findPaths(start, end):
+
+def findPaths(start : Tuple[int,int], end : Tuple[int,int]):
+    """Finds the best path from start to end"""
     paths = []
     explorePaths(start, end, [], paths)
-
     paths = sorted(paths, key=len)
-    for path in paths :
-        print(path)
     return paths
 
-def explorePaths(current, end, path, paths):
+def explorePaths(current, end, path, paths): # à améliorer pour éviter de générer trop de chemins
+    """Explore possible paths to find the best path"""
     global known_cells
     global guards_field_of_view
 
@@ -303,12 +318,11 @@ def explorePaths(current, end, path, paths):
     else:
         # Générer tous les mouvements possibles
         next_moves = generateNextMoves(current)
-
         # Explorer chaque mouvement possible
         for move in next_moves:
             # Si le chemin passe par une cellule à éviter, on ne continue pas sur cette cellule
             # or guards_field_of_view[move]==True il faut faire en sorte d'éviter ces cases
-            if move!=end and (known_cells[move] in [None,HC.WALL,HC.GUARD_S,HC.GUARD_E,HC.GUARD_N,HC.GUARD_W] or guards_field_of_view[move]==True):
+            if move!=end and (known_cells[move] in [None,HC.WALL,HC.GUARD_S,HC.GUARD_E,HC.GUARD_N,HC.GUARD_W]  or guards_field_of_view[move]==True):
                 continue
 
             elif( paths!=[]and len(path)+1 > len(min(paths, key=len))):
@@ -320,6 +334,7 @@ def explorePaths(current, end, path, paths):
 
     # Retirer la dernière position explorée pour revenir en arrière
     path.pop()
+
 
 def generateNextMoves(current):
     global largeur_mat
@@ -356,8 +371,9 @@ def init_solving(hauteur : int, largeur : int, nb_guardes : int, nb_civils : int
     set_guard_count(nb_guardes)
     set_civil_count(nb_civils)
     generateUnknownCells()
-    #pprint(generateGrid())
 
+
+############################################### CONTRAINTES ###############################################
 
 
 def cell_to_variable(m: int, n: int, val: int) -> PropositionnalVariable:
