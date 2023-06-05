@@ -238,6 +238,27 @@ def lookAt(hr : HitmanReferee,position : Tuple[int,int],orientation : HC,neighbo
 
 
 
+        
+        
+def update_visible_cells(grid: List[List[HC]]) -> List[List[HC]]:
+    new_grid = grid.copy()
+
+    for i in range(len(grid)):
+        for j in range(len(grid[i])):
+            if grid[i][j] == HC.EMPTY and grid[i][j + 1] == HC.EMPTY and grid[i][j + 2] == HC.EMPTY:
+                new_grid[i][j] = HC.WALL
+                new_grid[i][j + 1] = HC.WALL
+                new_grid[i][j + 2] = HC.WALL
+            elif grid[i][j] == HC.EMPTY and grid[i][j + 1] == HC.EMPTY:
+                new_grid[i][j] = HC.WALL
+                new_grid[i][j + 1] = HC.WALL
+                new_grid[i][j + 2] = HC.WALL
+            elif grid[i][j] == HC.EMPTY:
+                new_grid[i][j] = HC.WALL
+                new_grid[i][j + 1] = HC.WALL
+                new_grid[i][j + 2] = HC.WALL
+
+    return new_grid
 
 
 def explore(hr : HitmanReferee, status :  dict[str, Union[str, int, tuple[int, int], HC, list[tuple[tuple[int, int], HC]]]]) -> NoReturn :
