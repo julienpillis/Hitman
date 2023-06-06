@@ -28,8 +28,10 @@ guard_count : int = 0
 known_cells : Dict[Tuple[int,int],HC] = {} # Cellules connues/visitées par Hitman
 guards_field_of_view : Dict[Tuple[int,int],bool] = {} # Cellules vues par les gardes | None : Inconnue | True : vue par un garde | False : non vue par un garde
 civils_field_of_view : Dict[Tuple[int,int],bool] = {} # Cellules vues par les civils | None : Inconnue | True : vue par un civil | False : non vue par un civil
+danger_zone : Dict[Tuple[int,int],bool] = {}
 ## Plateau
 clauseBase : List[List[int]] = []
+dimacs = ""
 
 
 
@@ -263,20 +265,24 @@ def update_visible_cells(grid: List[List[HC]]) -> List[List[HC]]:
 
 def explore(hr : HitmanReferee, status :  dict[str, Union[str, int, tuple[int, int], HC, list[tuple[tuple[int, int], HC]]]]) -> NoReturn :
 
-    global known_cells,clauseBase
+    global known_cells,clauseBase,dimacs
     position : Tuple[int,int] = status['position']
     path = []
     last_position = []
+
+    dimacs = clauses_to_dimacs(clauseBase, 7, header = True)
     while(None in known_cells.values()):
         # Cellule de départ placée à empty
         pprint(status)
 
-
+        # Vérification des points de pénalité. Si +5, hitman est passé devant un garde
+        if(status['is_in_guard_range']): guards_field_of_view[position] = True
         # Vérification de la première cellule
         #if known_cells[position]==None :  known_cells[position] = HC.EMPTY
 
         # On récupère la vision
         for cell in status['vision']:
+            add_knowledge(cell)
             known_cells[tuple(cell[0])] = HC(cell[1])
             checkGuard(tuple(cell[0]),HC(cell[1]))
             checkCivil(tuple(cell[0]),HC(cell[1]))
@@ -284,10 +290,9 @@ def explore(hr : HitmanReferee, status :  dict[str, Union[str, int, tuple[int, i
         # On récupère l'écoute (mettre à jour guard field of view)
         if(last_position!=position):
             ctr = constraints_listener(status['position'],status['hear'])
-            #print(ctr)
-            #for var in ctr :
-                #print(variable_to_cell(abs(var[0])))
             clauseBase += ctr
+            dimacs += clauses_to_dimacs(ctr, 7,header = False)
+
 
         last_position = position
 
@@ -324,23 +329,57 @@ def explore(hr : HitmanReferee, status :  dict[str, Union[str, int, tuple[int, i
             status = lookAt(hr,position,status["orientation"],path[path.index(position)+1])
             position = status["position"]
 
+
             #il faut recalculer le chemin en fct de ce qu'on connait poour diminuer le cout
 
 
 
 
-
+        print(danger_zone)
         print(f"Current path : {path}")
         pprint(generateGrid(known_cells))
-        dimacs = clauses_to_dimacs(clauseBase, 7)
+
+        #dimacs = clauses_to_dimacs(clauseBase, 7)
         # print(dimacs)
         write_dimacs_file(dimacs, "hitman.cnf")
-        # print(dimacs)
         # print(exec_gophersat("hitman.cnf"))
         rebuild(exec_gophersat("hitman.cnf")[1])
         print("****************************************************************")
     pprint(generateGrid(known_cells))
     print(f"Map explored ? : {hr.send_content(known_cells)}")
+
+
+def add_knowledge(cell : Tuple[Tuple[int,int],HC]):
+    global clauseBase,dimacs
+    if(cell[1]==HC.EMPTY) :
+        var = cell_to_variable((cell[0][0], cell[0][1]), HC.EMPTY)
+        clauseBase += [[var]]
+        dimacs+=f"{var} 0\n"
+    elif (cell[1] == HC.WALL):
+        var = cell_to_variable((cell[0][0], cell[0][1]), HC.WALL)
+        clauseBase += [[var]]
+        dimacs += f"{var} 0\n"
+    elif (cell[1] == HC.TARGET):
+        var = cell_to_variable((cell[0][0], cell[0][1]), HC.TARGET)
+        clauseBase += [[var]]
+        dimacs += f"{var} 0\n"
+    elif (cell[1] == HC.SUIT):
+        var = cell_to_variable((cell[0][0], cell[0][1]), HC.SUIT)
+        clauseBase += [[var]]
+        dimacs += f"{var} 0\n"
+    elif (cell[1] == HC.PIANO_WIRE):
+        var = cell_to_variable((cell[0][0], cell[0][1]), HC.PIANO_WIRE)
+        clauseBase += [[var]]
+        dimacs += f"{var} 0\n"
+    elif (cell[1] in [HC.GUARD_N,HC.GUARD_W,HC.GUARD_E,HC.GUARD_S]):
+        var = cell_to_variable((cell[0][0], cell[0][1]), HC.GUARD_N)
+        clauseBase += [[var]]
+        dimacs += f"{var} 0\n"
+    elif (cell[1] in [HC.CIVIL_N,HC.CIVIL_W,HC.CIVIL_E,HC.CIVIL_S]):
+        var = cell_to_variable((cell[0][0], cell[0][1]), HC.CIVIL_N)
+        clauseBase += [[var]]
+        dimacs += f"{var} 0\n"
+
 
 def unreachable(cell : Tuple[int,int]):
     """ Determines if a cell is unreachable (no known and reachable neighbours)"""
@@ -357,7 +396,9 @@ def findPaths(start : Tuple[int,int], end : Tuple[int,int],start_direction : HC)
     paths = []
     explorePaths(start, end, [], paths, start_direction)
     # On retourne le chemin de plus faible coût
+    print(len(paths))
     paths.sort(key = lambda x:x[1])
+
     return paths
 
 def explorePaths(current, end, path, paths,start_direction : HC): # à améliorer pour éviter de générer trop de chemins
@@ -368,7 +409,14 @@ def explorePaths(current, end, path, paths,start_direction : HC): # à améliore
     path.append(current)    # Ajouter la cellule au chemin
 
     if current == end:
-        paths.append((list(path),compter_rotations_et_mouvements(path,start_direction)+ compter_malus(path)))  # Ajouter une copie du chemin à la liste des chemins
+        print("*****")
+        countMalus = compter_malus(path) + compter_rotations_et_mouvements(path,start_direction)
+        print((path,countMalus))
+        print("*****")
+        if(len(paths)!=0 and countMalus >= min(paths, key= lambda x : x[1])[1]) :
+            pass
+        else :
+            paths.append((list(path),countMalus))  # Ajouter une copie du chemin à la liste des chemins
     else:
         # Générer tous les mouvements possibles
         next_moves = generateNextMoves(current)
@@ -387,24 +435,16 @@ def explorePaths(current, end, path, paths,start_direction : HC): # à améliore
             if move in path:  # Vérifier si le mouvement a déjà été exploré
                 continue
 
+
             #Vérifier si le mouvement est accessible
             elif move != end and (known_cells[move] in [None, HC.WALL, HC.GUARD_S, HC.GUARD_E, HC.GUARD_N, HC.GUARD_W]):
                 continue
 
-            # On explore un chemin dans la vision d'un garde que si pas d'autre alternative
-            #elif move != end and guards_field_of_view[move] and move not in path:
-                #if paths == []:
-                    #explorePaths(move, end, path, paths,start_direction)
 
-
-            #elif( paths!=[] and len(path)+1 > len(min(paths, key=len))):
-                # On évite les chemins plus longs que les chemins existants
-                #continue
-
-            # Si le chemin coûte plus qu'un chemin existant, on ne le choisit pas
-
-            elif paths != [] and path!=[] and compter_rotations_et_mouvements(temp_path,start_direction) + compter_malus(temp_path) > min(paths, key= lambda x : x[1])[1]:
+            # Si le chemin coûte plus qu'un chemin existant que le cout min des chemins connus, on ne le choisit pas
+            elif paths != [] and path!=[] and (len(path) > min(paths, key= lambda x : x[1])[1] or len(path) > 2*len(min(paths, key= lambda x : x[1])[0])):
                 continue
+
 
             else:
                 explorePaths(move, end, path, paths,start_direction)
@@ -412,6 +452,7 @@ def explorePaths(current, end, path, paths,start_direction : HC): # à améliore
 
     # Retirer la dernière position explorée pour revenir en arrière
     path.pop()
+
 
 
 
@@ -460,11 +501,53 @@ def compter_rotations_et_mouvements(chemin, orientation_initiale):
 
     return nb_rotations + nb_mouvements
 
+def could_be_in_dangerous_zone(cell : Tuple[int,int]) -> bool :
+    c,r = cell[0],cell[1]
+
+    # calcul des positions possibles des gardes autour de HITMAN
+    col_min = max([0,c-2])
+    col_max = min([c+2,largeur_mat-1])
+    row_min = max([0,r-2])
+    row_max = min([r+2,hauteur_mat-1])
+
+
+    for col in range(col_min, col_max + 1 ):
+        for row in range(row_min, row_max + 1 ):
+            # si on n'a pas d'information sur la case, on peut tenter une déduction sur la case
+            if(known_cells[(col,row)]==None):
+                write_dimacs_file(dimacs+f"-{cell_to_variable((col, row), HC.GUARD_N)} 0\n", "hitman2.cnf")
+                # Si le solveur retourne faux, cela signifie qu'on peut déduire un garde sur la cellule courante.
+                # Le garde peut donc potentiellement regarder la cellule en paramètre. On retourne donc vrai.
+                if(not exec_gophersat("hitman2.cnf")[0]):
+                    print(f"GUARD DEDUCTION IN : {col,row}")
+                    define_danger_zone((col,row))
+                    return True
+    return False
+
+def define_danger_zone(cell : Tuple[int,int]) ->NoReturn:
+    global danger_zone
+    c, r = cell[0], cell[1]
+
+    # calcul des positions visible par le garde
+    col_min = max([0, c - 2])
+    col_max = min([c + 2, largeur_mat - 1])
+    row_min = max([0, r - 2])
+    row_max = min([r + 2, hauteur_mat - 1])
+    for col in range(col_min, col_max + 1 ):
+        for row in range(row_min, row_max + 1 ):
+            danger_zone[(col,row)] = True
+
+
 def compter_malus(path):
     malus = 0
     for cell in  path:
         if guards_field_of_view[cell]:
             malus +=5
+        # Si la cellule a été classée comme dangereuse, on considère un malus
+        elif(cell in danger_zone.keys() and danger_zone[cell]==True): malus +=5
+        # Vérification si la cellule est potentiellement dans la vue d'un garde (utilisation SOLVEUR)
+        elif could_be_in_dangerous_zone(cell) : malus +=5
+
     return malus
 
 
@@ -566,7 +649,6 @@ def create_cell_constraints() -> ClauseBase:
     for col in range(largeur_mat):
         for row in range(hauteur_mat):
             list = []
-            #for var in [HC.EMPTY,HC.SUIT,HC.WALL,HC.TARGET,HC.GUARD_S,HC.GUARD_N,HC.GUARD_W,HC.GUARD_E,HC.CIVIL_S,HC.CIVIL_N,HC.CIVIL_W,HC.CIVIL_E,HC.PIANO_WIRE]:
             # On fait la supposition que HC.CIVIL_N représente un civil et HC.GUARD_N un garde
             for var in [HC.EMPTY, HC.SUIT, HC.WALL, HC.TARGET,HC.GUARD_N, HC.CIVIL_N, HC.PIANO_WIRE]:
                 list.append(cell_to_variable((col, row),var))
@@ -605,9 +687,9 @@ def constraints_listener(position : Tuple[int,int], heard : int):
     col,row = position[0],position[1]
     # Calcul de la zone d'écoute (on limite le nombre de variables)
     col_min = max([0,col-2])
-    col_max = min([col+2,largeur_mat])
+    col_max = min([col+2,largeur_mat-1])
     row_min = max([0,row-2])
-    row_max = min([row+2,hauteur_mat])
+    row_max = min([row+2,hauteur_mat-1])
 
     variables = []
 
@@ -632,9 +714,10 @@ def generate_constraints():
     print("constraints generated")
     return clauseBase
 
-def clauses_to_dimacs(clauses: ClauseBase, nb_vars: int) -> str :
-
-    file = f"p cnf {nb_vars*taille_mat} {len(clauses)}\n"
+def clauses_to_dimacs(clauses: ClauseBase, nb_vars: int, header : bool) -> str :
+    file = ""
+    if(header):
+        file = f"p cnf {nb_vars*taille_mat} {len(clauses)}\n"
     for clause in clauses :
         for lit in clause:
             file +=f"{lit} "
@@ -650,7 +733,6 @@ def exec_gophersat(filename: str, cmd: str = "gophersat", encoding: str = "utf8"
     result = subprocess.run([cmd,filename], capture_output=True, check=True, encoding=encoding)
     string = str(result.stdout)
     lines = string.splitlines()
-
     if lines[1] != "s SATISFIABLE":
         return False, []
 

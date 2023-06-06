@@ -14,9 +14,14 @@ def main():
     pprint(status)
     launch_solving(status['m'],status['n'],status['guard_count'],status['civil_count'])
     print("********************************************************")
-    #print(cell_to_variable((6,0), HC.EMPTY))
-    #print(variable_to_cell(cell_to_variable((0,1), HC.WALL)))
+    #print(cell_to_variable((0,1), HC.GUARD_N))
+    #print(variable_to_cell(50))
     #print(variable_to_cell(cell_to_variable((0, 6), HC.EMPTY)))
+    #dimacs = clauses_to_dimacs(generate_constraints()+constraints_listener((0,0),0) + [[92]], 7,header=True)
+    #write_dimacs_file(dimacs, "hitman.cnf")
+    # print(exec_gophersat("hitman.cnf"))
+    #rebuild(exec_gophersat("hitman.cnf")[1])
+
     explore(hr,status)
 
 """
