@@ -17,10 +17,10 @@ def main():
     #print(cell_to_variable((0,1), HC.GUARD_N))
     #print(variable_to_cell(92))
     #print(variable_to_cell(cell_to_variable((0, 6), HC.EMPTY)))
-    dimacs = clauses_to_dimacs(generate_constraints()+constraints_listener((0,0),0) + [[cell_to_variable((6,4), HC.GUARD_N)]], 7,header=True)
-    write_dimacs_file(dimacs, "hitman.cnf")
-    print(exec_gophersat("hitman.cnf")[0])
-    rebuild(exec_gophersat("hitman.cnf")[1])
+    #dimacs = clauses_to_dimacs(generate_constraints()+constraints_listener((0,0),0) + [[-cell_to_variable((6,4), HC.GUARD_N)]], 7,header=True)
+    #write_dimacs_file(dimacs, "hitman.cnf")
+    #print(exec_gophersat("hitman.cnf")[0])
+    #rebuild(exec_gophersat("hitman.cnf")[1])
 
     explore(hr,status)
 

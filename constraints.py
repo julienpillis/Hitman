@@ -267,13 +267,13 @@ def explore(hr: HitmanReferee,
             known_cells[tuple(cell[0])] = HC(cell[1])
             checkGuard(tuple(cell[0]), HC(cell[1]))
             checkCivil(tuple(cell[0]), HC(cell[1]))
-        print("begin listener")
+
         # On récupère l'écoute (mettre à jour guard field of view)
         if (last_position != position):
             ctr = constraints_listener(status['position'], status['hear'])
             clauseBase += ctr
             dimacs += clauses_to_dimacs(ctr, 7, header=False)
-        print("end listener")
+
 
         print("begin guards")
         # On essaie de déduire la position d'un, ou plusieurs gardes
@@ -427,8 +427,8 @@ def explorePaths(current, end, path, paths, start_direction: HC):  # à amélior
 
             # Si le chemin coûte plus qu'un chemin existant que le cout min des chemins connus, on ne le choisit pas
             # On fait le choix de ne pas prendre les chemins deux fois plus long que le chemin de cout minimal déjà connu
-            # elif paths != [] and path!=[] and compter_malus(path)+compter_rotations_et_mouvements(path,start_direction) > min(paths, key= lambda x : x[1])[1]:
-            # continue
+            elif paths != [] and path!=[] and compter_malus(path)+compter_rotations_et_mouvements(path,start_direction) > min(paths, key= lambda x : x[1])[1]:
+                continue
 
             else:
                 explorePaths(move, end, path, paths, start_direction)
@@ -484,7 +484,7 @@ def compter_rotations_et_mouvements(chemin, orientation_initiale):
 
 def ajouter_ligne(file_path, ligne):
     with open(file_path, 'a') as fichier:
-        fichier.write(ligne + '\n')
+        fichier.write(ligne)
 
 
 def supprimer_derniere_ligne(file_path):
@@ -504,21 +504,21 @@ def supprimer_derniere_ligne(file_path):
 
 
 def detectGuards() -> NoReturn:
+
     global known_cells, clauseBase, dimacs
 
     for cell in [pos for pos in known_cells.keys() if (known_cells[pos] is None and pos not in known_guards.keys())]:
         col, row = cell[0], cell[1]
-
+        var = cell_to_variable((cell[0], cell[1]), HC.GUARD_N)
         #ajouter_ligne("hitman.cnf", f"-{cell_to_variable((col, row), HC.GUARD_N)} 0\n")
 
-        write_dimacs_file(dimacs + f"-{cell_to_variable((col, row), HC.GUARD_N)} 0\n","hitman.cnf")
+        write_dimacs_file(dimacs + f"-{var} 0\n","hitman.cnf")
         # Si le solveur retourne faux, cela signifie qu'on peut déduire un garde sur la cellule courante.
         # Le garde peut donc potentiellement regarder la cellule en paramètre. On retourne donc vrai.
         if (not exec_gophersat("hitman.cnf")[0]):
             print(f"GUARD DEDUCTION IN : {col, row}")
             known_guards[(col, row)] = True
             define_danger_zone((col, row))
-            var = cell_to_variable((cell[0], cell[1]), HC.GUARD_N)
             clauseBase += [[var]]
             #supprimer_derniere_ligne("hitman.cnf")
             #ajouter_ligne("hitman.cnf", f"{cell_to_variable((col, row), HC.GUARD_N)} 0\n")
@@ -797,5 +797,4 @@ def rebuild(model: Model):
 
     print("SOLUTION SOLVEUR : ")
     pprint(generateGrid(solved))
-
 
