@@ -79,7 +79,7 @@ class HC(Enum):
 
 
 # Provisoire...
-world_example = [
+world_example1 = [
     [HC.EMPTY, HC.EMPTY, HC.EMPTY, HC.SUIT, HC.GUARD_S, HC.WALL, HC.WALL],
     [HC.EMPTY, HC.WALL, HC.EMPTY, HC.EMPTY, HC.EMPTY, HC.EMPTY, HC.EMPTY],
     [HC.TARGET, HC.WALL, HC.EMPTY, HC.EMPTY, HC.EMPTY, HC.CIVIL_N, HC.EMPTY],
@@ -121,14 +121,60 @@ world_example2 = [
     [HC.CIVIL_N, HC.EMPTY, HC.WALL, HC.WALL, HC.EMPTY, HC.PIANO_WIRE, HC.EMPTY],
 ]
 
-world_example3 = [
+world_example = [
     [HC.GUARD_S, HC.EMPTY, HC.EMPTY, HC.EMPTY, HC.EMPTY, HC.EMPTY, HC.EMPTY],
     [HC.EMPTY, HC.EMPTY, HC.WALL, HC.WALL, HC.EMPTY, HC.WALL, HC.EMPTY],
     [HC.EMPTY, HC.EMPTY, HC.WALL, HC.EMPTY, HC.EMPTY, HC.EMPTY, HC.GUARD_W],
-    [HC.EMPTY, HC.WALL, HC.PIANO_WIRE, HC.EMPTY, HC.EMPTY, HC.EMPTY, HC.GUARD_S],
+    [HC.EMPTY, HC.WALL, HC.PIANO_WIRE, HC.EMPTY, HC.EMPTY, HC.EMPTY, HC.GUARD_W],
     [HC.EMPTY, HC.WALL, HC.GUARD_E, HC.EMPTY, HC.EMPTY, HC.WALL, HC.EMPTY],
     [HC.CIVIL_E, HC.WALL, HC.TARGET, HC.EMPTY, HC.EMPTY, HC.SUIT, HC.CIVIL_W],
 ]
+
+complete_map_example = {
+    (0, 5): HC.GUARD_S,
+    (1, 5): HC.EMPTY,
+    (2, 5): HC.EMPTY,
+    (3, 5): HC.EMPTY,
+    (4, 5): HC.EMPTY,
+    (5, 5): HC.EMPTY,
+    (6, 5): HC.EMPTY,
+    (0, 4): HC.EMPTY,
+    (1, 4): HC.EMPTY,
+    (2, 4): HC.WALL,
+    (3, 4): HC.WALL,
+    (4, 4): HC.EMPTY,
+    (5, 4): HC.WALL,
+    (6, 4): HC.EMPTY,
+    (0, 3): HC.EMPTY,
+    (1, 3): HC.EMPTY,
+    (2, 3): HC.WALL,
+    (3, 3): HC.EMPTY,
+    (4, 3): HC.EMPTY,
+    (5, 3): HC.EMPTY,
+    (6, 3): HC.GUARD_W,
+    (0, 2): HC.EMPTY,
+    (1, 2): HC.WALL,
+    (2, 2): HC.PIANO_WIRE,
+    (3, 2): HC.EMPTY,
+    (4, 2): HC.EMPTY,
+    (5, 2): HC.EMPTY,
+    (6, 2): HC.GUARD_W,
+    (0, 1): HC.EMPTY,
+    (1, 1): HC.WALL,
+    (2, 1): HC.GUARD_E,
+    (3, 1): HC.EMPTY,
+    (4, 1): HC.EMPTY,
+    (5, 1): HC.WALL,
+    (6, 1): HC.EMPTY,
+    (0, 0): HC.CIVIL_E,
+    (1, 0): HC.WALL,
+    (2, 0): HC.TARGET,
+    (3, 0): HC.EMPTY,
+    (4, 0): HC.EMPTY,
+    (5, 0): HC.SUIT,
+    (6, 0): HC.CIVIL_W,
+}
+
 
 world_example4 = [
     [HC.EMPTY, HC.EMPTY, HC.EMPTY, HC.GUARD_W, HC.EMPTY, HC.GUARD_W, HC.EMPTY],
@@ -148,7 +194,7 @@ world_example5 = [
     [HC.EMPTY, HC.EMPTY, HC.WALL, HC.EMPTY, HC.EMPTY, HC.EMPTY, HC.EMPTY],
 ]
 
-complete_map_example = {
+complete_map_example2 = {
     (0, 5): HC.EMPTY,
     (1, 5): HC.EMPTY,
     (2, 5): HC.EMPTY,
@@ -193,7 +239,9 @@ complete_map_example = {
     (6, 0): HC.EMPTY,
 }
 
-world_example6 =[
+
+world_example7 =[
+    [HC.EMPTY,HC.EMPTY,HC.EMPTY,HC.CIVIL_S],
     [HC.SUIT,HC.EMPTY,HC.EMPTY,HC.EMPTY],
     [HC.EMPTY,HC.EMPTY,HC.GUARD_S,HC.EMPTY],
     [HC.PIANO_WIRE,HC.WALL,HC.TARGET,HC.EMPTY],
@@ -201,7 +249,7 @@ world_example6 =[
     [HC.EMPTY,HC.CIVIL_E,HC.EMPTY,HC.EMPTY],
 
 ]
-complete_map_example2 = {
+complete_map_example7 = {
     (0,0) : HC.EMPTY,
     (1, 0): HC.CIVIL_E,
     (2, 0): HC.EMPTY,
@@ -222,6 +270,10 @@ complete_map_example2 = {
     (1,4) : HC.EMPTY,
     (2,4) : HC.EMPTY,
     (3,4) : HC.EMPTY,
+    (0,5) : HC.EMPTY,
+    (1,5) : HC.EMPTY,
+    (2,5) : HC.EMPTY,
+    (3,5) : HC.CIVIL_S,
 }
 
 

@@ -587,7 +587,7 @@ def compter_malus(path):
     return malus
 
 
-def launch_solving(hauteur: int, largeur: int, nb_guardes: int, nb_civils: int):
+def init_exploration(hauteur: int, largeur: int, nb_guardes: int, nb_civils: int):
     global clauseBase, dimacs
     init_solving(hauteur, largeur, nb_guardes, nb_civils)
     clauseBase = generate_constraints()

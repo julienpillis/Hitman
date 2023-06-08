@@ -7,51 +7,8 @@ import copy
 State = TypeVar("State")
 Plan = List[str]
 str_to_action : Dict[str,Callable[[State],Optional[State]]]
+start_position : Tuple[int,int]
 
-complete_map_example = {
-    (0, 5): HC.EMPTY,
-    (1, 5): HC.EMPTY,
-    (2, 5): HC.EMPTY,
-    (3, 5): HC.SUIT,
-    (4, 5): HC.GUARD_S,
-    (5, 5): HC.WALL,
-    (6, 5): HC.WALL,
-    (0, 4): HC.EMPTY,
-    (1, 4): HC.WALL,
-    (2, 4): HC.EMPTY,
-    (3, 4): HC.EMPTY,
-    (4, 4): HC.EMPTY,
-    (5, 4): HC.EMPTY,
-    (6, 4): HC.EMPTY,
-    (0, 3): HC.TARGET,
-    (1, 3): HC.WALL,
-    (2, 3): HC.EMPTY,
-    (3, 3): HC.EMPTY,
-    (4, 3): HC.EMPTY,
-    (5, 3): HC.CIVIL_N,
-    (6, 3): HC.EMPTY,
-    (0, 2): HC.WALL,
-    (1, 2): HC.WALL,
-    (2, 2): HC.EMPTY,
-    (3, 2): HC.GUARD_E,
-    (4, 2): HC.EMPTY,
-    (5, 2): HC.CIVIL_E,
-    (6, 2): HC.CIVIL_W,
-    (0, 1): HC.EMPTY,
-    (1, 1): HC.EMPTY,
-    (2, 1): HC.EMPTY,
-    (3, 1): HC.EMPTY,
-    (4, 1): HC.EMPTY,
-    (5, 1): HC.EMPTY,
-    (6, 1): HC.EMPTY,
-    (0, 0): HC.EMPTY,
-    (1, 0): HC.EMPTY,
-    (2, 0): HC.WALL,
-    (3, 0): HC.WALL,
-    (4, 0): HC.EMPTY,
-    (5, 0): HC.PIANO_WIRE,
-    (6, 0): HC.EMPTY,
-}
 
 class Action(Enum) :
     turn_clockwise = "turn_clockwise"
@@ -95,10 +52,11 @@ state = {"at":None,
 
 def initial_state(map : Dict[Tuple[int, int], HC],start_pos : Tuple[int,int],looking_at : HC, hauteur : int, largeur : int) -> NoReturn:
     "Initial state"
-    global state,hauteur_mat,largeur_mat
+    global state,hauteur_mat,largeur_mat,start_position
     hauteur_mat = hauteur
     largeur_mat = largeur
     state['at'] = start_pos
+    start_position = start_pos
     if(looking_at==HC.N):state['look_at'] = Orientation.N
     elif (looking_at == HC.S): state['look_at'] = Orientation.S
     elif (looking_at == HC.E): state['look_at'] = Orientation.E
@@ -132,22 +90,14 @@ def initial_state(map : Dict[Tuple[int, int], HC],start_pos : Tuple[int,int],loo
             state['civil'][cell] = Orientation.W
 
         for orientation in Orientation:
-            # trouve le voisin de la cellule en fontion de la direction
+            # trouve le voisin de la cellule en fonction de la direction
             ngh = find_neighbour(cell,orientation)
             if ngh != None :
                 state['proximity'][(cell,orientation)] = ngh
 
+    # On étudie les zones visibles par les gardes et les civils
     define_view()
-    pprint(state)
-    s = turn_clockwise(state)[0]
-    print(s['look_at'])
-    if(move(s)!=None):
-        print(move(s)[0]['at'])
-        s = move(s)[0]
-    pprint(s)
-    if (move(s) != None):
-        print(move(s)[0]['at'])
-        s = move(s)[0]
+
 
     return state
 
@@ -203,7 +153,6 @@ def define_view():
 
     for cell in state['civil']:
         zone = []
-        print(cell[0],cell[1])
         orientation = state['civil'][cell]
         if (orientation == Orientation.N):
             row_max = min([cell[1] + 1, hauteur_mat - 1])
@@ -283,16 +232,16 @@ def kill_guard(state : State) -> State:
         if ((pos, ori) in state['proximity'].keys() and (state['proximity'][(pos, ori)] in state['guard'].keys()) ):
             to_kill = state['proximity'][(pos, ori)]
             if(to_kill in state['guard'].keys()):
-                if(state['guard'][to_kill]!=ori):
+                if(pos not in state['guard_view'][to_kill]):
                     cost = 1
                     new_state['guard'].pop(to_kill)
                     new_state['guard_view'].pop(to_kill)
                     new_state['empty'].append(to_kill)
                     if (state['is_invisible']):
                         return (new_state, 20)
-                    for zone in state['guard_view'].values():
+                    for zone in new_state['guard_view'].values():
                         cost += zone.count(pos) * 100
-                    for zone in state['civil_view'].values():
+                    for zone in new_state['civil_view'].values():
                         cost += zone.count(pos) * 100
                     return (new_state, cost + 20)
     return None
@@ -306,16 +255,16 @@ def kill_civil(state : State) -> State:
             to_kill = state['proximity'][(pos, ori)]
 
             if(to_kill in state['civil'].keys()):
-                if(state['civil'][to_kill]!=ori):
+                if(pos not in state['civil_view'][to_kill]):
                     cost = 1
                     new_state['civil'].pop(to_kill)
                     new_state['civil_view'].pop(to_kill)
                     new_state['empty'].append(to_kill)
                     if (state['is_invisible']):
                         return (new_state, 20)
-                    for zone in state['guard_view'].values():
+                    for zone in new_state['guard_view'].values():
                         cost += zone.count(pos) * 100
-                    for zone in state['civil_view'].values():
+                    for zone in new_state['civil_view'].values():
                         cost += zone.count(pos) * 100
                     return(new_state,cost + 20)
     return None
@@ -353,8 +302,6 @@ def grab_wire(state : State) -> State:
 
 
 
-
-
 def is_final(state : State) -> bool:
     return state["target_killed"]
 
@@ -373,9 +320,11 @@ class Node:
         self.cost = cost  # Coût actuel depuis le nœud de départ
         self.parent = parent  # Parent du nœud dans le chemin
 
-def astar(start : State):
+def astar(start : State,goal : str):
+
     to_check = []
     closed_set = []
+
 
 
     # On introduit l'état initial de coût 0, et l'action Nulle
@@ -384,7 +333,8 @@ def astar(start : State):
     while to_check :
         current_node = to_check.pop(0)
         # Cas de l'objectif atteint
-        if is_final(current_node.state) :
+        # recherche du chemin optimal vers la corde
+        if goal=="wire" and current_node.state['has_wire']:
             path = []
             node = current_node
             expected_cost = 0
@@ -392,10 +342,34 @@ def astar(start : State):
                 path.append(node.action)
                 expected_cost+=node.cost
                 node = node.parent
-                print(node.state['guard'])
             path.reverse()
-            return path,expected_cost
 
+            return path,expected_cost,current_node.state
+        # recherche du chemin optimal vers la cible
+        elif goal=="target" and current_node.state['target_killed']:
+            path = []
+            node = current_node
+            expected_cost = 0
+            while node.parent is not None :
+                path.append(node.action)
+                expected_cost+=node.cost
+                node = node.parent
+            path.reverse()
+
+            return path,expected_cost,current_node.state
+
+        # recherche du chemin optimal vers la position de départ
+        elif goal=="leave" and current_node.state['at']==start_position :
+            path = []
+            node = current_node
+            expected_cost = 0
+            while node.parent is not None :
+                path.append(node.action)
+                expected_cost+=node.cost
+                node = node.parent
+            path.reverse()
+
+            return path,expected_cost,current_node.state
         # Cas de l'objectif non atteint
 
         #si l'état n'a jamais été visité, on l'ajoute à la liste des noeuds visités
@@ -413,7 +387,6 @@ def astar(start : State):
             after_action_cost = action[0][1] + current_node.cost
             after_action_node = Node(action[0][0],after_action_cost,action[1],current_node)
 
-
             if after_action_node in to_check:
                 existing_node_index = to_check.index(after_action_node)
                 existing_node = to_check[existing_node_index]
@@ -423,6 +396,7 @@ def astar(start : State):
 
             else:
                 to_check.append(after_action_node)
+    return None
 
 
 
@@ -438,9 +412,26 @@ def next_actions(state):
     if (new_state_w_cost != None):
         to_test.append((new_state_w_cost, Action.turn_anticlockwise))
 
+
     new_state_w_cost = move(state)
     if (new_state_w_cost != None):
         to_test.append((new_state_w_cost, Action.move))
+
+    if(not state['has_suit']):
+        new_state_w_cost = grab_suit(state)
+        if (new_state_w_cost != None):
+            to_test.append((new_state_w_cost, Action.grab_suit))
+
+    if(not state['has_wire']):
+        new_state_w_cost = grab_wire(state)
+        if (new_state_w_cost != None):
+            to_test.append((new_state_w_cost, Action.grab_wire))
+
+    if(not state['is_invisible']):
+        new_state_w_cost = wear_suit(state)
+        if (new_state_w_cost != None):
+            to_test.append((new_state_w_cost, Action.wear_suit))
+
 
     new_state_w_cost = kill_target(state)
     if (new_state_w_cost != None):
@@ -454,15 +445,42 @@ def next_actions(state):
     if (new_state_w_cost != None):
         to_test.append((new_state_w_cost, Action.kill_civil))
 
-    new_state_w_cost = grab_suit(state)
-    if (new_state_w_cost != None):
-        to_test.append((new_state_w_cost, Action.grab_suit))
-
-    new_state_w_cost = grab_wire(state)
-    if (new_state_w_cost != None):
-        to_test.append((new_state_w_cost, Action.grab_wire))
-
-    new_state_w_cost = wear_suit(state)
-    if (new_state_w_cost != None):
-        to_test.append((new_state_w_cost, Action.wear_suit))
     return to_test
+
+def launch_killing(state_t : State, hr : HitmanReferee):
+    print("Getting piano wire...")
+    path_wire, cost_wire, wired_state = astar(state_t, "wire")
+
+    print("Going to target...")
+    path_target, cost_target, tk_state = astar(wired_state, "target")
+
+    print("Leaving the area...")
+    path_leave, cost_leave, tk_leave = astar(tk_state, "leave")
+
+    print(f"Path : {path_wire + path_target + path_leave}")
+    print(f"Estimated cost : {cost_target + cost_wire + cost_leave}")
+
+    for action in path_wire + path_target + path_leave:
+        if (action == Action.turn_clockwise):
+            status = hr.turn_clockwise()
+            print(status)
+        elif (action == Action.turn_anticlockwise):
+            status = hr.turn_anti_clockwise()
+            print(status)
+        elif (action == Action.move):
+            status = hr.move()
+            print(status)
+        elif (action == Action.kill_target):
+            status = hr.kill_target()
+            print(status)
+        elif (action == Action.grab_wire):
+            status = hr.take_weapon()
+            print(status)
+        elif (action == Action.kill_civil):
+            status = hr.neutralize_civil()
+            print(status)
+        elif (action == Action.kill_guard):
+            status = hr.neutralize_guard()
+            print(status)
+        print(action)
+

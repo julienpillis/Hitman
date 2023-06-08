@@ -8,7 +8,7 @@ from pprint import pprint
 def phase1_run(hr):
     #status = hr.turn_clockwise()
     status = hr.start_phase1()
-    launch_solving(status['m'],status['n'],status['guard_count'],status['civil_count'])
+    init_exploration(status['m'], status['n'], status['guard_count'], status['civil_count'])
     explore(hr, status)
     # pprint(hr.send_content({(0, 0): HC.EMPTY}))
     #pprint(hr.send_content(complete_map_example))
@@ -19,31 +19,8 @@ def phase1_run(hr):
 def phase2_run(hr):
     status = hr.start_phase2()
     state_t = initial_state(complete_map_example,status['position'],status['orientation'],status['m'],status['n'])
-    path,cost = astar(state_t)
-    for action in path:
-        if(action==Action.turn_clockwise):
-            status = hr.turn_clockwise()
-            print(status)
-        elif (action == Action.turn_anticlockwise):
-            status = hr.turn_anti_clockwise()
-            print(status)
-        elif (action == Action.move):
-            status = hr.move()
-            print(status)
-        elif (action == Action.kill_target):
-            status = hr.kill_target()
-            print(status)
-        elif(action == Action.grab_wire):
-            status = hr.take_weapon()
-            print(status)
-        elif (action == Action.kill_civil):
-            status = hr.neutralize_civil()
-            print(status)
-        elif (action == Action.kill_guard):
-            status = hr.neutralize_guard()
-            print(status)
-        print(action)
-    print(status)
+    launch_killing(state_t,hr)
+
     """
     status = hr.move()
     pprint(status)
@@ -179,9 +156,9 @@ def main():
     #status = hr.start_phase2()
     #pprint(status)
     phase2_run(hr)
-    #_, score, history = hr.end_phase2()
-    #pprint(score)
-    #pprint(history)
+    _, score, history = hr.end_phase2()
+    pprint(score)
+    pprint(history)
 
 
 if __name__ == "__main__":
