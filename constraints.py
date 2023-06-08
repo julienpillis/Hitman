@@ -291,15 +291,17 @@ def explore(hr: HitmanReferee,
 
             # Calcul des cellules inconnues, et de la position elle-même (cas de la position de départ)
             not_visited_tmp = [cell for cell in known_cells.keys() if known_cells[cell] == None and cell != position]
-
-            # print(not_visited_tmp)
+            print(known_cells)
             not_visited = []
 
             # Tri des cellules accessibles
+            for cell in neighbours :
+                if(known_cells[cell]==None) : not_visited.append(cell)
             for i in range(len(not_visited_tmp)):
                 if not unreachable(not_visited_tmp[i]): not_visited.append(not_visited_tmp[i])
 
             # Calcul le point le plus proche, non visité
+
             to_visit = min(not_visited, key=lambda point: (point[0] - position[0]) ** 2 + (point[1] - position[1]) ** 2)
             if (to_visit in neighbours):
                 status = lookAt(hr, position, status['orientation'], to_visit)
@@ -371,6 +373,7 @@ def unreachable(cell: Tuple[int, int]):
     for neighbour in getNeighbours(cell):
         # print(neighbour)
         if known_cells[neighbour] not in [None, HC.WALL, HC.GUARD_S, HC.GUARD_E, HC.GUARD_N, HC.GUARD_W]:
+
             return False
     return True
 
