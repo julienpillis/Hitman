@@ -529,3 +529,40 @@ def launch_killing(state_t: State, hr: HitmanReferee) -> NoReturn:
             status = hr.neutralize_guard()
             print(status)
         print(action)
+
+        
+  ##################################################
+def manhattan_distance(pos1: Tuple[int, int], pos2: Tuple[int, int]) -> int:
+    return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1])
+
+
+
+def heuristic_distance(state: State, goal: str) -> int:
+    if goal == 'target':
+        return manhattan_distance(state['at'], state['target'])
+    # Ajoutez d'autres cas si nécessaire
+    return 0
+
+
+def heuristic_guards(state: State) -> int:
+    num_guards = 0
+    for guard_view in state['guard_view'].values():
+        if state['at'] in guard_view:
+            num_guards += 1
+    return num_guards
+
+
+def heuristic_invisibility(state: State) -> int:
+    if state['is_invisible']:
+        return 0  # Le joueur est invisible, aucun coût supplémentaire
+    return 1  # Le joueur n'est pas invisible, coût supplémentaire de 1
+
+
+def heuristic_global(state: State, goal: str) -> int:
+    distance = manhattan_distance(state['at'], state['target'])
+    guards = heuristic_guards(state)
+    civils = heuristic_civils(state)
+    invisibility = heuristic_invisibility(state)
+
+    # Vous pouvez ajuster les coefficients selon votre besoin
+    return distance + 2 * guards + 2 * civils +
