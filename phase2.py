@@ -422,6 +422,13 @@ def astar(start: State, goal: str) -> Optional:
 
             after_action_cost = action[0][1] + current_node.cost
             after_action_node = Node(action[0][0], after_action_cost, action[1], current_node)
+            
+              """
+                # Estimation heuristique (distance de Manhattan)
+            heuristic_cost = manhattan_distance(after_action_node.state, goal)
+
+            after_action_node.cost += heuristic_cost
+            """
 
             if after_action_node in to_check:
                 existing_node_index = to_check.index(after_action_node)
@@ -432,6 +439,9 @@ def astar(start: State, goal: str) -> Optional:
 
             else:
                 to_check.append(after_action_node)
+                """
+                to_check.sort(key=lambda node: node.cost)  # Tri des nœuds en fonction du coût total
+                """
     return None
 
 
@@ -532,10 +542,25 @@ def launch_killing(state_t: State, hr: HitmanReferee) -> NoReturn:
 
         
   ##################################################
-def manhattan_distance(pos1: Tuple[int, int], pos2: Tuple[int, int]) -> int:
-    return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1])
+"""
+def manhattan_distance(state: State, goal: str) -> int:
+    """Calcule la distance de Manhattan entre l'état actuel et l'état objectif."""
+    if goal == "wire":
+        goal_position = state['wire_position']
+    elif goal == "target":
+        goal_position = state['target_position']
+    elif goal == "leave":
+        goal_position = start_position  # Remplacez start_position par la position de départ réelle
+    else:
+        raise ValueError("Objectif invalide")
 
+    current_position = state['at']
+    distance = abs(current_position[0] - goal_position[0]) + abs(current_position[1] - goal_position[1])
+    return distance
 
+"""
+
+"""
 
 def heuristic_distance(state: State, goal: str) -> int:
     if goal == 'target':
@@ -566,3 +591,4 @@ def heuristic_global(state: State, goal: str) -> int:
 
     # Vous pouvez ajuster les coefficients selon votre besoin
     return distance + 2 * guards + 2 * civils +
+    """
