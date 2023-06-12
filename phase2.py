@@ -422,6 +422,13 @@ def astar(start: State, goal: str) -> Optional:
 
             after_action_cost = action[0][1] + current_node.cost
             after_action_node = Node(action[0][0], after_action_cost, action[1], current_node)
+            
+              """
+                # Estimation heuristique (distance de Manhattan)
+            heuristic_cost = manhattan_distance(after_action_node.state, goal)
+
+            after_action_node.cost += heuristic_cost
+            """
 
             if after_action_node in to_check:
                 existing_node_index = to_check.index(after_action_node)
@@ -432,6 +439,9 @@ def astar(start: State, goal: str) -> Optional:
 
             else:
                 to_check.append(after_action_node)
+                """
+                to_check.sort(key=lambda node: node.cost)  # Tri des nœuds en fonction du coût total
+                """
     return None
 
 
@@ -529,3 +539,56 @@ def launch_killing(state_t: State, hr: HitmanReferee) -> NoReturn:
             status = hr.neutralize_guard()
             print(status)
         print(action)
+
+        
+  ##################################################
+"""
+def manhattan_distance(state: State, goal: str) -> int:
+    """Calcule la distance de Manhattan entre l'état actuel et l'état objectif."""
+    if goal == "wire":
+        goal_position = state['wire_position']
+    elif goal == "target":
+        goal_position = state['target_position']
+    elif goal == "leave":
+        goal_position = start_position  # Remplacez start_position par la position de départ réelle
+    else:
+        raise ValueError("Objectif invalide")
+
+    current_position = state['at']
+    distance = abs(current_position[0] - goal_position[0]) + abs(current_position[1] - goal_position[1])
+    return distance
+
+"""
+
+"""
+
+def heuristic_distance(state: State, goal: str) -> int:
+    if goal == 'target':
+        return manhattan_distance(state['at'], state['target'])
+    # Ajoutez d'autres cas si nécessaire
+    return 0
+
+
+def heuristic_guards(state: State) -> int:
+    num_guards = 0
+    for guard_view in state['guard_view'].values():
+        if state['at'] in guard_view:
+            num_guards += 1
+    return num_guards
+
+
+def heuristic_invisibility(state: State) -> int:
+    if state['is_invisible']:
+        return 0  # Le joueur est invisible, aucun coût supplémentaire
+    return 1  # Le joueur n'est pas invisible, coût supplémentaire de 1
+
+
+def heuristic_global(state: State, goal: str) -> int:
+    distance = manhattan_distance(state['at'], state['target'])
+    guards = heuristic_guards(state)
+    civils = heuristic_civils(state)
+    invisibility = heuristic_invisibility(state)
+
+    # Vous pouvez ajuster les coefficients selon votre besoin
+    return distance + 2 * guards + 2 * civils +
+    """
