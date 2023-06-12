@@ -1,4 +1,4 @@
-from hitman.hitman import HC, HitmanReferee, complete_map_example, world_example, complete_map_example2
+from hitman.hitman import HC, HitmanReferee, complete_map_example6, world_example, complete_map_example2
 from pprint import pprint
 from constraints import *
 from phase2 import *
@@ -12,11 +12,11 @@ def phase1_run(hr):
 
 def phase2_run(hr):
     status = hr.start_phase2()
-    state_t = initial_state(complete_map_example,status['position'],status['orientation'],status['m'],status['n'])
+    state_t = initial_state(complete_map_example6,status['position'],status['orientation'],status['m'],status['n'])
     launch_killing(state_t,hr)
 
 def main():
-    """
+
     hr = HitmanReferee()
     status = hr.start_phase1()
     pprint(status)
@@ -25,7 +25,7 @@ def main():
     pprint(score)
     pprint(true_map)
     pprint(history)
-    """
+
     hr = HitmanReferee()
     status = hr.start_phase2()
     pprint(status)

@@ -1,6 +1,6 @@
 import os
 from itertools import combinations
-from hitman.hitman import HC, HitmanReferee, complete_map_example
+from hitman.hitman import HC, HitmanReferee
 from pprint import pprint
 from typing import *
 import subprocess
@@ -35,6 +35,7 @@ known_guards: Dict[Tuple[int, int], bool] = {}
 ## Plateau
 clauseBase: List[List[int]] = []
 dimacs = ""
+history : List[Tuple[Tuple[int,int],HC]] = []
 
 
 ############################################### SETTERS ###############################################
@@ -120,9 +121,10 @@ def generateGrid(gridContent: Dict[Tuple[int, int], HC]) -> GridClear:
 
 def checkGuard(position: Tuple[int, int], content: HC) -> NoReturn:
     """ Checks if the content of the cell is a guard """
-    global guards_field_of_view
+    global guards_field_of_view,known_guards
     if (content == HC.GUARD_E):
         guards_field_of_view[position] = True
+        known_guards[position] = True
         if (position[0] < largeur_mat - 1):
             guards_field_of_view[(position[0] + 1, position[1])] = True
             if (position[0] < largeur_mat - 2):
@@ -130,6 +132,7 @@ def checkGuard(position: Tuple[int, int], content: HC) -> NoReturn:
 
     elif (content == HC.GUARD_W):
         guards_field_of_view[position] = True
+        known_guards[position] = True
         if (position[0] > 0):
             guards_field_of_view[(position[0] - 1, position[1])] = True
             if (position[0] > 1):
@@ -137,12 +140,14 @@ def checkGuard(position: Tuple[int, int], content: HC) -> NoReturn:
 
     elif (content == HC.GUARD_S):
         guards_field_of_view[position] = True
+        known_guards[position] = True
         if (position[1] > 0):
             guards_field_of_view[(position[0], position[1] - 1)] = True
             if (position[1] > 1):
                 guards_field_of_view[(position[0], position[1] - 2)] = True
     elif (content == HC.GUARD_N):
         guards_field_of_view[position] = True
+        known_guards[position] = True
         if (position[1] < hauteur_mat - 1):
             guards_field_of_view[(position[0], position[1] + 1)] = True
             if (position[1] < hauteur_mat - 2):
@@ -244,16 +249,16 @@ def lookAt(hr: HitmanReferee, position: Tuple[int, int], orientation: HC, neighb
 
 def explore(hr: HitmanReferee,
             status: dict[str, Union[str, int, tuple[int, int], HC, list[tuple[tuple[int, int], HC]]]]) -> NoReturn:
-    global known_cells, clauseBase, dimacs
+    global known_cells, clauseBase, dimacs, history
     position: Tuple[int, int] = status['position']
     path = []
     last_position = []
 
-    dimacs = clauses_to_dimacs(clauseBase, 7, header=True)
+    #dimacs = clauses_to_dimacs(clauseBase, 7, header=True)
+
     while (None in known_cells.values()):
         # Cellule de départ placée à empty
         pprint(status)
-
         # Vérification des points de pénalité. Si +5, hitman est passé devant un garde
         if (status['is_in_guard_range']):
             guards_field_of_view[position] = True
@@ -262,24 +267,32 @@ def explore(hr: HitmanReferee,
         # if known_cells[position]==None :  known_cells[position] = HC.EMPTY
 
         # On récupère la vision
+
         for cell in status['vision']:
             add_knowledge(cell)
             known_cells[tuple(cell[0])] = HC(cell[1])
             checkGuard(tuple(cell[0]), HC(cell[1]))
             checkCivil(tuple(cell[0]), HC(cell[1]))
 
+
         # On récupère l'écoute (mettre à jour guard field of view)
         if (last_position != position):
+
             ctr = constraints_listener(status['position'], status['hear'])
             clauseBase += ctr
             dimacs += clauses_to_dimacs(ctr, 7, header=False)
 
 
-        print("begin guards")
-        # On essaie de déduire la position d'un, ou plusieurs gardes
-        detectGuards()
+
+
+
+        # On essaie de déduire la position d'un, ou plusieurs gardes, si on n'a jamais été dans cet état (position + orientation)
+        if (status['position'], status['orientation']) not in history and (guard_count+civil_count>0):
+            detectGuards()
+            history.append((status['position'], status['orientation']))
+
         last_position = position
-        print("end guards")
+
         # Si on connait toutes les cellules, on arrête
         if (None not in known_cells.values()): break
 
@@ -332,7 +345,7 @@ def explore(hr: HitmanReferee,
 
 
 def add_knowledge(cell: Tuple[Tuple[int, int], HC]):
-    global clauseBase, dimacs
+    global clauseBase, dimacs,guard_count,civil_count
     if (cell[1] == HC.EMPTY):
         var = cell_to_variable((cell[0][0], cell[0][1]), HC.EMPTY)
         clauseBase += [[var]]
@@ -360,11 +373,13 @@ def add_knowledge(cell: Tuple[Tuple[int, int], HC]):
         var = cell_to_variable((cell[0][0], cell[0][1]), HC.GUARD_N)
         clauseBase += [[var]]
         dimacs += f"{var} 0\n"
+        guard_count-=1
 
     elif (cell[1] in [HC.CIVIL_N, HC.CIVIL_W, HC.CIVIL_E, HC.CIVIL_S]):
         var = cell_to_variable((cell[0][0], cell[0][1]), HC.CIVIL_N)
         clauseBase += [[var]]
         dimacs += f"{var} 0\n"
+        civil_count-=1
 
 
 
@@ -508,7 +523,7 @@ def supprimer_derniere_ligne(file_path):
 
 def detectGuards() -> NoReturn:
 
-    global known_cells, clauseBase, dimacs
+    global known_cells, clauseBase, dimacs,guard_count
 
     for cell in [pos for pos in known_cells.keys() if (known_cells[pos] is None and pos not in known_guards.keys())]:
         col, row = cell[0], cell[1]
@@ -519,7 +534,9 @@ def detectGuards() -> NoReturn:
         # Si le solveur retourne faux, cela signifie qu'on peut déduire un garde sur la cellule courante.
         # Le garde peut donc potentiellement regarder la cellule en paramètre. On retourne donc vrai.
         if (not exec_gophersat("hitman.cnf")[0]):
+            # On considère que c'est un garde
             print(f"GUARD DEDUCTION IN : {col, row}")
+            guard_count -= 1
             known_guards[(col, row)] = True
             define_danger_zone((col, row))
             clauseBase += [[var]]
@@ -528,35 +545,6 @@ def detectGuards() -> NoReturn:
             dimacs += f"{var} 0\n"
         #else:
             #supprimer_derniere_ligne("hitman.cnf")
-
-
-"""
-def could_be_in_dangerous_zone(cell : Tuple[int,int]) -> bool :
-    c,r = cell[0],cell[1]
-
-    # calcul des positions possibles des gardes autour de HITMAN
-    col_min = max([0,c-2])
-    col_max = min([c+2,largeur_mat-1])
-    row_min = max([0,r-2])
-    row_max = min([r+2,hauteur_mat-1])
-
-
-    for col in range(col_min, col_max + 1 ):
-        for row in range(row_min, row_max + 1 ):
-            # si on n'a pas d'information sur la case, on peut tenter une déduction sur la case
-            if(known_cells[(col,row)]==None and (col,row) not in known_guards.keys()):
-                #write_dimacs_file(dimacs+f"-{cell_to_variable((col, row), HC.GUARD_N)} 0\n", "hitman2.cnf")
-
-                # Si le solveur retourne faux, cela signifie qu'on peut déduire un garde sur la cellule courante.
-                # Le garde peut donc potentiellement regarder la cellule en paramètre. On retourne donc vrai.
-                if(not exec_gophersat("hitman2.cnf")[0]):
-                    print(f"GUARD DEDUCTION IN : {col,row}")
-                    known_guards[(col,row)] = True
-                    define_danger_zone((col,row))
-                    return True
-
-    return False
-"""
 
 
 def define_danger_zone(cell: Tuple[int, int]) -> NoReturn:
@@ -594,7 +582,7 @@ def init_exploration(hauteur: int, largeur: int, nb_guardes: int, nb_civils: int
 
     # reset des fichiers (on efface leur contenu)
     f = open('hitman.cnf', 'r+')
-    f.truncate(0)  # need '0' when using r+
+    f.truncate(0)
     dimacs = clauses_to_dimacs(clauseBase, 7, True)
     write_dimacs_file(dimacs, "hitman.cnf")
 
@@ -662,8 +650,9 @@ def unique(variables: List[PropositionnalVariable]) -> ClauseBase:
 # retourne l'ensemble de clause traitant la contrainte : "au moins n variables vraies dans la liste"
 def at_least_n(n: int, vars: List[int]) -> List[Clause]:
     clauses = []
-    for c in combinations(vars, len(vars) - (n - 1)):
-        clauses.append(list(c))
+    if len(vars)!=0 :
+        for c in combinations(vars, len(vars) - (n - 1)):
+            clauses.append(list(c))
     return clauses
 
 
@@ -740,14 +729,18 @@ def constraints_listener(position: Tuple[int, int], heard: int):
     row_max = min([row + 2, hauteur_mat - 1])
 
     variables = []
-
+    # Nombre de personnes entendues, dont la position n'est pas connue
+    really_heard = heard
     # calcul des variables concernées par l'écoute
     for col in range(col_min, col_max + 1):
         for row in range(row_min, row_max + 1):
-            variables.append(cell_to_variable((col, row), HC.GUARD_N))
-            variables.append(cell_to_variable((col, row), HC.CIVIL_N))
+            if not (col,row) in known_cells.keys() :
+                variables.append(cell_to_variable((col, row), HC.GUARD_N))
+                variables.append(cell_to_variable((col, row), HC.CIVIL_N))
+            if (col, row) in known_guards.keys(): really_heard -=1
 
-    if (heard < 5):
+
+    if (really_heard < 5):
         # Si écoute inférieure à 5, on sait qu'il y en a exactement n
         return exactly_n(heard, variables)
     else:
@@ -756,7 +749,7 @@ def constraints_listener(position: Tuple[int, int], heard: int):
 
 
 def generate_constraints():
-    global clauseBase
+    global clauseBase,guard_count,civil_count
     clauseBase = create_cell_constraints() + create_objects_constraints() + create_npc_constraints(guard_count,
                                                                                                    civil_count)
     print("constraints generated")

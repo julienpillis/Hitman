@@ -130,7 +130,7 @@ world_example = [
     [HC.CIVIL_E, HC.WALL, HC.TARGET, HC.EMPTY, HC.EMPTY, HC.SUIT, HC.CIVIL_W],
 ]
 
-complete_map_example = {
+complete_map_example6 = {
     (0, 5): HC.GUARD_S,
     (1, 5): HC.EMPTY,
     (2, 5): HC.EMPTY,
