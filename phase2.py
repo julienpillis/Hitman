@@ -291,19 +291,19 @@ def kill_civil(state: State) -> Optional[Tuple[State, int]]:
         if ((pos, ori) in state['proximity'].keys() and (state['proximity'][(pos, ori)] in state['civil'].keys())):
             to_kill = state['proximity'][(pos, ori)]
 
-            if (to_kill in state['civil'].keys()):
-                if (pos not in state['civil_view'][to_kill]):
-                    cost = 21
-                    new_state['civil'].pop(to_kill)
-                    new_state['civil_view'].pop(to_kill)
-                    new_state['empty'].append(to_kill)
-                    if (state['is_invisible']):
-                        return (new_state, cost)
-                    for zone in new_state['guard_view'].values():
-                        cost += zone.count(pos) * 100
-                    for zone in new_state['civil_view'].values():
-                        cost += zone.count(pos) * 100
+            #if (to_kill in state['civil'].keys()):
+            if (pos not in state['civil_view'][to_kill]):
+                cost = 21
+                new_state['civil'].pop(to_kill)
+                new_state['civil_view'].pop(to_kill)
+                new_state['empty'].append(to_kill)
+                if (state['is_invisible']):
                     return (new_state, cost)
+                for zone in new_state['guard_view'].values():
+                    cost += zone.count(pos) * 100
+                for zone in new_state['civil_view'].values():
+                    cost += zone.count(pos) * 100
+                return (new_state, cost)
     return None
 
 
@@ -367,17 +367,20 @@ def astar(start: State, goal: str) -> Optional:
     start_node = Node(start, 0)
     to_check.append(start_node)
     while to_check:
+
         current_node = to_check.pop(0)
         # Cas de l'objectif atteint
         # recherche du chemin optimal vers la corde
         if goal == "wire" and current_node.state['has_wire']:
+            print(state)
             path = []
             node = current_node
-            expected_cost = 0
+            expected_cost = node.cost
+            print(expected_cost)
             while node.parent is not None:
                 path.append(node.action)
-                expected_cost += node.cost
                 node = node.parent
+
             path.reverse()
 
             return path, expected_cost, current_node.state
@@ -385,11 +388,12 @@ def astar(start: State, goal: str) -> Optional:
         elif goal == "target" and current_node.state['target_killed']:
             path = []
             node = current_node
-            expected_cost = 0
+            expected_cost = node.cost
+            print(expected_cost)
             while node.parent is not None:
                 path.append(node.action)
-                expected_cost += node.cost
                 node = node.parent
+
             path.reverse()
 
             return path, expected_cost, current_node.state
@@ -398,11 +402,12 @@ def astar(start: State, goal: str) -> Optional:
         elif goal == "leave" and current_node.state['at'] == start_position:
             path = []
             node = current_node
-            expected_cost = 0
+            expected_cost = node.cost
+            print(expected_cost)
             while node.parent is not None:
                 path.append(node.action)
-                expected_cost += node.cost
                 node = node.parent
+
             path.reverse()
 
             return path, expected_cost, current_node.state
@@ -422,26 +427,27 @@ def astar(start: State, goal: str) -> Optional:
 
             after_action_cost = action[0][1] + current_node.cost
             after_action_node = Node(action[0][0], after_action_cost, action[1], current_node)
-            
-              """
-                # Estimation heuristique (distance de Manhattan)
-            heuristic_cost = manhattan_distance(after_action_node.state, goal)
 
-            after_action_node.cost += heuristic_cost
-            """
+            # verification si l'état est présent dans to_check
+            already_in = False
+            index = -1
+            for i in range(len(to_check)) :
+                if to_check[i].state==after_action_node.state :
+                    already_in = True
+                    index = i
 
-            if after_action_node in to_check:
-                existing_node_index = to_check.index(after_action_node)
-                existing_node = to_check[existing_node_index]
+            if already_in:
 
+                existing_node = to_check[index]
+
+                # si le coût de la nouvelle action nous donne un chemin moins couteux, on va le choisir
                 if after_action_node.cost < existing_node.cost:
-                    to_check[existing_node_index] = after_action_node
-
+                    print(f"{after_action_node.cost} | {existing_node.cost} ")
+                    to_check[index] = after_action_node
+                    print(f"{to_check[index]} ")
             else:
                 to_check.append(after_action_node)
-                """
-                to_check.sort(key=lambda node: node.cost)  # Tri des nœuds en fonction du coût total
-                """
+
     return None
 
 
@@ -498,7 +504,7 @@ def next_actions(state_t : State) -> list[Union[tuple[tuple[State, int], Action]
 
 
 def launch_killing(state_t: State, hr: HitmanReferee) -> NoReturn:
-    """ Lancement de la phase 2, objectif : tuer la cible et fuir """
+    """ Lancement de la phase 2, objectif : récupérer la corde, tuer la cible et fuir """
 
     # Premièrement, il faut récupérer la corde de piano
     print("Getting piano wire...")
@@ -542,53 +548,3 @@ def launch_killing(state_t: State, hr: HitmanReferee) -> NoReturn:
 
         
   ##################################################
-"""
-def manhattan_distance(state: State, goal: str) -> int:
-    """Calcule la distance de Manhattan entre l'état actuel et l'état objectif."""
-    if goal == "wire":
-        goal_position = state['wire_position']
-    elif goal == "target":
-        goal_position = state['target_position']
-    elif goal == "leave":
-        goal_position = start_position  # Remplacez start_position par la position de départ réelle
-    else:
-        raise ValueError("Objectif invalide")
-
-    current_position = state['at']
-    distance = abs(current_position[0] - goal_position[0]) + abs(current_position[1] - goal_position[1])
-    return distance
-
-"""
-
-"""
-
-def heuristic_distance(state: State, goal: str) -> int:
-    if goal == 'target':
-        return manhattan_distance(state['at'], state['target'])
-    # Ajoutez d'autres cas si nécessaire
-    return 0
-
-
-def heuristic_guards(state: State) -> int:
-    num_guards = 0
-    for guard_view in state['guard_view'].values():
-        if state['at'] in guard_view:
-            num_guards += 1
-    return num_guards
-
-
-def heuristic_invisibility(state: State) -> int:
-    if state['is_invisible']:
-        return 0  # Le joueur est invisible, aucun coût supplémentaire
-    return 1  # Le joueur n'est pas invisible, coût supplémentaire de 1
-
-
-def heuristic_global(state: State, goal: str) -> int:
-    distance = manhattan_distance(state['at'], state['target'])
-    guards = heuristic_guards(state)
-    civils = heuristic_civils(state)
-    invisibility = heuristic_invisibility(state)
-
-    # Vous pouvez ajuster les coefficients selon votre besoin
-    return distance + 2 * guards + 2 * civils +
-    """

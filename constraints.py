@@ -4,7 +4,7 @@ from hitman.hitman import HC, HitmanReferee
 from pprint import pprint
 from typing import *
 import subprocess
-from math import sqrt
+
 
 GridClear = List[List[str]]
 Grid = List[List[int]]
@@ -334,7 +334,7 @@ def explore(hr: HitmanReferee,
         print(f"Current path : {path}")
         pprint(generateGrid(known_cells))
 
-        # dimacs = clauses_to_dimacs(clauseBase, 7)
+        dimacs = clauses_to_dimacs(clauseBase, 7,True)
         # print(dimacs)
         write_dimacs_file(dimacs, "hitman.cnf")
         # print(exec_gophersat("hitman.cnf"))
@@ -529,7 +529,7 @@ def detectGuards() -> NoReturn:
         col, row = cell[0], cell[1]
         var = cell_to_variable((cell[0], cell[1]), HC.GUARD_N)
         #ajouter_ligne("hitman.cnf", f"-{cell_to_variable((col, row), HC.GUARD_N)} 0\n")
-
+        dimacs = clauses_to_dimacs(clauseBase,7,True)
         write_dimacs_file(dimacs + f"-{var} 0\n","hitman.cnf")
         # Si le solveur retourne faux, cela signifie qu'on peut déduire un garde sur la cellule courante.
         # Le garde peut donc potentiellement regarder la cellule en paramètre. On retourne donc vrai.
@@ -750,8 +750,9 @@ def constraints_listener(position: Tuple[int, int], heard: int):
 
 def generate_constraints():
     global clauseBase,guard_count,civil_count
-    clauseBase = create_cell_constraints() + create_objects_constraints() + create_npc_constraints(guard_count,
-                                                                                                   civil_count)
+    #clauseBase = create_cell_constraints() + create_objects_constraints() + create_npc_constraints(guard_count,civil_count)
+    clauseBase = create_cell_constraints() + create_objects_constraints()
+
     print("constraints generated")
     return clauseBase
 
