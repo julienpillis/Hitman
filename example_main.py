@@ -16,19 +16,6 @@ def phase2_run(hr):
     launch_killing(state_t,hr)
 
 def main():
-
-
-    hr = HitmanReferee()
-    status = hr.start_phase2()
-    pprint(status)
-    phase2_run(hr)
-    _, score, history = hr.end_phase2()
-    pprint(score)
-    pprint(history)
-
-
-
-"""
     hr = HitmanReferee()
     status = hr.start_phase1()
     pprint(status)
@@ -37,8 +24,14 @@ def main():
     pprint(score)
     pprint(true_map)
     pprint(history)
-"""
 
+    hr = HitmanReferee()
+    status = hr.start_phase2()
+    pprint(status)
+    phase2_run(hr)
+    _, score, history = hr.end_phase2()
+    pprint(score)
+    pprint(history)
 
 
 if __name__ == "__main__":

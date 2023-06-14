@@ -264,7 +264,7 @@ def explore(hr: HitmanReferee,
             guards_field_of_view[position] = True
             danger_zone[position] = True
         # Vérification de la première cellule
-        # if known_cells[position]==None :  known_cells[position] = HC.EMPTY
+        if known_cells[position]==None :  known_cells[position] = HC.EMPTY
 
         # On récupère la vision
 
@@ -686,8 +686,6 @@ def create_cell_constraints() -> ClauseBase:
             list = []
             # On fait la supposition que HC.CIVIL_N représente un civil et HC.GUARD_N un garde
             for var in [HC.EMPTY, HC.SUIT, HC.WALL, HC.TARGET, HC.GUARD_N, HC.CIVIL_N, HC.PIANO_WIRE]:
-                print((col, row), var)
-                print(cell_to_variable((col, row), var))
                 list.append(cell_to_variable((col, row), var))
             kb.append(at_least_one(list))
             kb += unique(list)
