@@ -77,7 +77,7 @@ def initial_state(map: Dict[Tuple[int, int], HC], start_pos: Tuple[int, int], lo
     else:
         state['look_at'] = Orientation.W
     for cell in map:
-        if (map[cell] in [HC.EMPTY, HC.SUIT, HC.TARGET, HC.PIANO_WIRE]):
+        if (map[cell] in [HC.EMPTY, HC.SUIT, HC.TARGET, HC.PIANO_WIRE, HC.CIVIL_W,HC.CIVIL_E,HC.CIVIL_N,HC.CIVIL_S]):
             state['empty'].append(cell)
         if map[cell] == HC.WALL:
             state['wall'].append(cell)
@@ -263,22 +263,22 @@ def kill_guard(state: State) -> Optional[Tuple[State, int]]:
     new_state: State = copy.deepcopy(state)
     pos = state["at"]
     ori = state["look_at"]
-    if (pos != None and ori != None and state['has_wire']):
+    if (pos != None and ori != None ):
         if ((pos, ori) in state['proximity'].keys() and (state['proximity'][(pos, ori)] in state['guard'].keys())):
             to_kill = state['proximity'][(pos, ori)]
-            if (to_kill in state['guard'].keys()):
-                if (pos not in state['guard_view'][to_kill]):
-                    cost = 21
-                    new_state['guard'].pop(to_kill)
-                    new_state['guard_view'].pop(to_kill)
-                    new_state['empty'].append(to_kill)
-                    if (state['is_invisible']):
-                        return (new_state, cost)
-                    for zone in new_state['guard_view'].values():
-                        cost += zone.count(pos) * 100
-                    for zone in new_state['civil_view'].values():
-                        cost += zone.count(pos) * 100
+            #if (to_kill in state['guard'].keys()):
+            if (pos not in state['guard_view'][to_kill]):
+                cost = 21
+                new_state['guard'].pop(to_kill)
+                new_state['guard_view'].pop(to_kill)
+                new_state['empty'].append(to_kill)
+                if (state['is_invisible']):
                     return (new_state, cost)
+                for zone in new_state['guard_view'].values():
+                    cost += zone.count(pos) * 100
+                for zone in new_state['civil_view'].values():
+                    cost += zone.count(pos) * 100
+                return (new_state, cost)
     return None
 
 
@@ -287,7 +287,7 @@ def kill_civil(state: State) -> Optional[Tuple[State, int]]:
     new_state: State = copy.deepcopy(state)
     pos = state["at"]
     ori = state["look_at"]
-    if (pos != None and ori != None and state['has_wire']):
+    if (pos != None and ori != None):
         if ((pos, ori) in state['proximity'].keys() and (state['proximity'][(pos, ori)] in state['civil'].keys())):
             to_kill = state['proximity'][(pos, ori)]
 
@@ -372,11 +372,9 @@ def astar(start: State, goal: str) -> Optional:
         # Cas de l'objectif atteint
         # recherche du chemin optimal vers la corde
         if goal == "wire" and current_node.state['has_wire']:
-            print(state)
             path = []
             node = current_node
             expected_cost = node.cost
-            print(expected_cost)
             while node.parent is not None:
                 path.append(node.action)
                 node = node.parent
@@ -389,7 +387,6 @@ def astar(start: State, goal: str) -> Optional:
             path = []
             node = current_node
             expected_cost = node.cost
-            print(expected_cost)
             while node.parent is not None:
                 path.append(node.action)
                 node = node.parent
@@ -399,11 +396,11 @@ def astar(start: State, goal: str) -> Optional:
             return path, expected_cost, current_node.state
 
         # recherche du chemin optimal vers la position de départ
+
         elif goal == "leave" and current_node.state['at'] == start_position:
             path = []
             node = current_node
             expected_cost = node.cost
-            print(expected_cost)
             while node.parent is not None:
                 path.append(node.action)
                 node = node.parent
@@ -411,6 +408,8 @@ def astar(start: State, goal: str) -> Optional:
             path.reverse()
 
             return path, expected_cost, current_node.state
+
+
         # Cas de l'objectif non atteint
 
         # si l'état n'a jamais été visité, on l'ajoute à la liste des noeuds visités
@@ -442,9 +441,7 @@ def astar(start: State, goal: str) -> Optional:
 
                 # si le coût de la nouvelle action nous donne un chemin moins couteux, on va le choisir
                 if after_action_node.cost < existing_node.cost:
-                    print(f"{after_action_node.cost} | {existing_node.cost} ")
                     to_check[index] = after_action_node
-                    print(f"{to_check[index]} ")
             else:
                 to_check.append(after_action_node)
 

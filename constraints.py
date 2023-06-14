@@ -613,8 +613,8 @@ def cell_to_variable(cell: Tuple[int, int], content: HC) -> PropositionnalVariab
         value = 7
     else:
         value = content.value
-    return taille_mat * (value - 1) + cell[1] * hauteur_mat + cell[1] + cell[0] + 1
-
+    #return taille_mat * (value - 1) + cell[1] * hauteur_mat + cell[1] + cell[0] + 1
+    return (value-1) * taille_mat + cell[0] + (cell[1]*largeur_mat) + 1
 
 def variable_to_cell(i: int) -> Tuple[int, int, HC]:
     """Transforme une variable en cellule"""
@@ -686,6 +686,8 @@ def create_cell_constraints() -> ClauseBase:
             list = []
             # On fait la supposition que HC.CIVIL_N représente un civil et HC.GUARD_N un garde
             for var in [HC.EMPTY, HC.SUIT, HC.WALL, HC.TARGET, HC.GUARD_N, HC.CIVIL_N, HC.PIANO_WIRE]:
+                print((col, row), var)
+                print(cell_to_variable((col, row), var))
                 list.append(cell_to_variable((col, row), var))
             kb.append(at_least_one(list))
             kb += unique(list)
