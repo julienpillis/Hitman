@@ -719,8 +719,8 @@ def create_npc_constraints(nbGuards: int, nbCivils: int) -> ClauseBase:
     return kb
 
 
-def constraints_listener(position: Tuple[int, int], heard: int):
-    """ Adds constraints to clause base from listening infos """
+def constraints_listener(position: Tuple[int, int], heard: int) -> ClauseBase:
+    """ Ajoute les contraintes liées à l'écoute """
     col, row = position[0], position[1]
     # Calcul de la zone d'écoute (on limite le nombre de variables)
     col_min = max([0, col - 2])
@@ -734,9 +734,11 @@ def constraints_listener(position: Tuple[int, int], heard: int):
     # calcul des variables concernées par l'écoute
     for col in range(col_min, col_max + 1):
         for row in range(row_min, row_max + 1):
+            # Si la cellule est déjà connue, on l'enlève des variables
             if not (col,row) in known_cells.keys() :
                 variables.append(cell_to_variable((col, row), HC.GUARD_N))
                 variables.append(cell_to_variable((col, row), HC.CIVIL_N))
+            # Si la cellule contient un garde,
             if (col, row) in known_guards.keys(): really_heard -=1
 
 

@@ -438,16 +438,21 @@ class HitmanReferee:
 
         self.__add_history("Move")
 
-        if self.__get_world_content(x + offset_x, y + offset_y) not in [
-            HC.EMPTY,
-            HC.PIANO_WIRE,
-            HC.CIVIL_N,
-            HC.CIVIL_E,
-            HC.CIVIL_S,
-            HC.CIVIL_W,
-            HC.SUIT,
-            HC.TARGET,
-        ]:
+        if (
+            not (0 <= x + offset_x < self.__n)
+            or not (0 <= y + offset_y < self.__m)
+            or self.__get_world_content(x + offset_x, y + offset_y)
+            not in [
+                HC.EMPTY,
+                HC.PIANO_WIRE,
+                HC.CIVIL_N,
+                HC.CIVIL_E,
+                HC.CIVIL_S,
+                HC.CIVIL_W,
+                HC.SUIT,
+                HC.TARGET,
+            ]
+        ):
             if self.__phase == 1:
                 self.__phase1_penalties += 5 * self.__seen_by_guard_num()
                 return self.__get_status_phase_1("Err: invalid move")
@@ -769,13 +774,29 @@ class HitmanReferee:
     def __seen_by_civil_num(self) -> int:
         count = 0
         x, y = self.__pos
+        if self.__get_world_content(x, y) in [
+            HC.CIVIL_N,
+            HC.CIVIL_E,
+            HC.CIVIL_S,
+            HC.CIVIL_W,
+        ]:
+            count = 1
+            self.__is_in_civil_range = True
+            return count
+
         for civil in self.__civils.keys():
-            count += (
-                1
-                if len([0 for ((l, c), _) in self.__civils[civil] if l == x and c == y])
-                > 0
-                else 0
-            )
+            civil_x, civil_y = civil
+            if civil_x == x and civil_y == y:
+                count += 1
+            else:
+                count += (
+                    1
+                    if len(
+                        [0 for ((l, c), _) in self.__civils[civil] if l == x and c == y]
+                    )
+                    > 0
+                    else 0
+                )
         self.__is_in_civil_range = count > 0
         return count
 
@@ -835,7 +856,7 @@ class HitmanReferee:
             HC.CIVIL_W,
         ]:
             for guard in self.__guards.keys():
-                # Note : un garde ne peut pas voir au dela d'un objet
+                # Note : un garde ne peut pas voir au dela d'un objet,
                 # mais si Hitman est sur l'objet alors il voit Hitman
                 count += (
                     1
