@@ -1,4 +1,5 @@
-from constraints import *
+from typing import *
+from hitman import HC, HitmanReferee
 from enum import Enum
 import copy
 
@@ -500,12 +501,14 @@ def next_actions(state_t : State) -> list[Union[tuple[tuple[State, int], Action]
 #####################################################################################################
 
 
-def launch_killing(state_t: State, hr: HitmanReferee) -> NoReturn:
+def launch_killing(status: State, hr: HitmanReferee,map) -> NoReturn:
     """ Lancement de la phase 2, objectif : récupérer la corde, tuer la cible et fuir """
+    global state
+    state = initial_state(map,status['position'],status['orientation'],status['m'],status['n'])
 
     # Premièrement, il faut récupérer la corde de piano
     print("Getting piano wire...")
-    path_wire, cost_wire, wired_state = astar(state_t, "wire")
+    path_wire, cost_wire, wired_state = astar(state, "wire")
 
     # Puis, il faut tuer la corde de piano
     print("Going to target...")

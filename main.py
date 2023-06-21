@@ -1,19 +1,16 @@
-from hitman.hitman import HC, HitmanReferee
-from pprint import pprint
-from constraints import *
+from hitman.hitman import HC
+from phase1 import *
 from phase2 import *
 from pprint import pprint
 
 
 def phase1_run(hr):
     status = hr.start_phase1()
-    init_exploration(status['m'], status['n'], status['guard_count'], status['civil_count'])
-    explore(hr, status)
+    launch_exploration(status,hr)
 
 def phase2_run(hr,map):
     status = hr.start_phase2()
-    state_t = initial_state(map,status['position'],status['orientation'],status['m'],status['n'])
-    launch_killing(state_t,hr)
+    launch_killing(status,hr,map)
 
 def main():
     hr = HitmanReferee()

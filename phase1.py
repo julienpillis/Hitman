@@ -611,6 +611,14 @@ def init_solving(hauteur: int, largeur: int, nb_guardes: int, nb_civils: int):
     taille_mat = hauteur_mat * largeur_mat
 
 
+def launch_exploration(status, hr):
+    # Lecture et enregistrement des informations initiales
+    init_exploration(status['m'], status['n'], status['guard_count'], status['civil_count'])
+    # Début de l'exploration
+    explore(hr,status)
+
+
+
 ############################################### CONTRAINTES ###############################################
 
 
