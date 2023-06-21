@@ -1,4 +1,4 @@
-from hitman.hitman import HC, HitmanReferee, complete_map_example6, world_example, complete_map_example2,complete_map_example7
+from hitman.hitman import HC, HitmanReferee
 from pprint import pprint
 from constraints import *
 from phase2 import *
