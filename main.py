@@ -5,12 +5,16 @@ from pprint import pprint
 
 
 def phase1_run(hr):
+    """Lancement de la phase 1"""
     status = hr.start_phase1()
-    launch_exploration(status,hr)
+    launch_exploration(status, hr)
 
-def phase2_run(hr,map):
+
+def phase2_run(hr, map):
+    """Lancement de la phase 1"""
     status = hr.start_phase2()
-    launch_killing(status,hr,map)
+    launch_killing(status, hr, map)
+
 
 def main():
     hr = HitmanReferee()
@@ -25,7 +29,7 @@ def main():
     hr = HitmanReferee()
     status = hr.start_phase2()
     pprint(status)
-    phase2_run(hr,true_map)
+    phase2_run(hr, true_map)
     _, score, history = hr.end_phase2()
     pprint(score)
     pprint(history)
@@ -33,6 +37,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-

@@ -1,10 +1,8 @@
-import os
 from itertools import combinations
-from hitman.hitman import HC, HitmanReferee
 from pprint import pprint
 from typing import *
 import subprocess
-
+from hitman.hitman import HC, HitmanReferee
 
 GridClear = List[List[str]]
 Grid = List[List[int]]
@@ -25,16 +23,10 @@ hitman_position: Tuple[int, int]
 civil_count: int = 0
 guard_count: int = 0
 known_cells: Dict[Tuple[int, int], HC] = {}  # Cellules connues/visitées par Hitman
-guards_field_of_view: Dict[
-    Tuple[int, int], bool
-] = (
-    {}
-)  # Cellules vues par les gardes | None : Inconnue | True : vue par un garde | False : non vue par un garde
-civils_field_of_view: Dict[
-    Tuple[int, int], bool
-] = (
-    {}
-)  # Cellules vues par les civils | None : Inconnue | True : vue par un civil | False : non vue par un civil
+guards_field_of_view: Dict[Tuple[int, int], bool] = {}  # Cellules vues par les gardes
+# | None : Inconnue | True : vue par un garde | False : non vue par un garde
+civils_field_of_view: Dict[Tuple[int, int], bool] = {}  # Cellules vues par les civils
+# | None : Inconnue | True : vue par un civil | False : non vue par un civil
 danger_zone: Dict[Tuple[int, int], bool] = {}
 known_guards: Dict[Tuple[int, int], bool] = {}
 ## Plateau
@@ -43,7 +35,7 @@ dimacs = ""
 history: List[Tuple[Tuple[int, int], HC]] = []
 
 
-############################################### SETTERS ###############################################
+######################################### SETTERS ###############################
 def set_hauteur_mat(h: int):
     """Sets the value of hauteur_mat"""
     global hauteur_mat
@@ -80,7 +72,7 @@ def generateUnknownCells():
             civils_field_of_view[(i, j)] = None
 
 
-############################################### AFFICHAGE ###############################################
+################################ AFFICHAGE #########################
 def generateGrid(gridContent: Dict[Tuple[int, int], HC]) -> GridClear:
     """Generates the grid with know information"""
     grid: GridClear = []
@@ -122,7 +114,7 @@ def generateGrid(gridContent: Dict[Tuple[int, int], HC]) -> GridClear:
     return grid
 
 
-############################################### PARCOURS ###############################################
+################################# PARCOURS ###########################
 
 
 def checkGuard(position: Tuple[int, int], content: HC):
@@ -204,7 +196,7 @@ def getNeighbours(position: Tuple[int, int]) -> List[Tuple[int, int]]:
 def lookAt(
     hr: HitmanReferee,
     position: Tuple[int, int],
-    orientation: HC,
+    orientation: Union[str, int, Tuple[int, int], HC, List[Tuple[Tuple[int, int], HC]]],
     neighbour: Tuple[int, int],
 ) -> dict[str, Union[str, int, tuple[int, int], HC, list[tuple[tuple[int, int], HC]]]]:
     if neighbour[0] == position[0] - 1:
@@ -262,9 +254,9 @@ def explore(
     ],
 ):
     global known_cells, clauseBase, dimacs, history
-    position: Tuple[int, int] = status["position"]
+    position: Tuple[int, int] = cast(Tuple[int, int], status["position"])
     path: List[Tuple[int, int]] = []
-    last_position: Tuple[int, int] = (-1,-1)
+    last_position: Tuple[int, int] = (-1, -1)
 
     # dimacs = clauses_to_dimacs(clauseBase, 7, header=True)
 
@@ -282,23 +274,32 @@ def explore(
         # On récupère la vision
 
         for cell in status["vision"]:
-            add_knowledge(cell)
-            known_cells[tuple(cell[0])] = HC(cell[1])
-            checkGuard(cell[0], HC(cell[1]))
-            checkCivil(cell[0], HC(cell[1]))
+            cast(Tuple[Tuple[int, int], HC], cell)
+            add_knowledge(cast(Tuple[Tuple[int, int], HC], cell))
+            known_cells[cast(Tuple[int, int], cell[0])] = HC(cell[1])
+            checkGuard(cast(Tuple[int, int], cell[0]), HC(cell[1]))
+            checkCivil(cast(Tuple[int, int], cell[0]), HC(cell[1]))
 
         # On récupère l'écoute (mettre à jour guard field of view)
         if last_position != position:
-            ctr = constraints_listener(status["position"], status["hear"])
+            ctr = constraints_listener(
+                cast(Tuple[int, int], status["position"]), cast(int, status["hear"])
+            )
             clauseBase += ctr
             dimacs += clauses_to_dimacs(ctr, 7, header=False)
 
-        # On essaie de déduire la position d'un, ou plusieurs gardes, si on n'a jamais été dans cet état (position + orientation)
+        # On essaie de déduire la position d'un, ou plusieurs gardes,
+        # si on n'a jamais été dans cet état (position + orientation)
         if (status["position"], status["orientation"]) not in history and (
             guard_count + civil_count > 0
         ):
             detectGuards()
-            history.append((status["position"], status["orientation"]))
+            history.append(
+                cast(
+                    Tuple[Tuple[int, int], HC],
+                    (status["position"], status["orientation"]),
+                )
+            )
 
         last_position = position
 
@@ -345,7 +346,7 @@ def explore(
             status = lookAt(
                 hr, position, status["orientation"], path[path.index(position) + 1]
             )
-            position = status["position"]
+            position = cast(Tuple[int, int], status["position"])
 
             # il faut recalculer le chemin en fct de ce qu'on connait poour diminuer le cout
 
@@ -416,7 +417,13 @@ def unreachable(cell: Tuple[int, int]):
     return True
 
 
-def findPaths(start: Tuple[int, int], end: Tuple[int, int], start_direction: HC):
+def findPaths(
+    start: Tuple[int, int],
+    end: Tuple[int, int],
+    start_direction: Union[
+        str, int, Tuple[int, int], HC, List[Tuple[Tuple[int, int], HC]]
+    ],
+):
     """Finds the best path from start to end"""
     paths: List[Tuple[List[Tuple[int, int]], int]] = []
     explorePaths(start, end, [], paths, start_direction)
@@ -428,7 +435,13 @@ def findPaths(start: Tuple[int, int], end: Tuple[int, int], start_direction: HC)
 
 
 def explorePaths(
-    current, end, path, paths, start_direction: HC
+    current,
+    end,
+    path,
+    paths,
+    start_direction: Union[
+        str, int, Tuple[int, int], HC, List[Tuple[Tuple[int, int], HC]]
+    ],
 ):  # à améliorer pour éviter de générer trop de chemins
     """Explore possible paths to find the best path"""
     global known_cells
@@ -580,7 +593,7 @@ def compter_malus(path):
         if guards_field_of_view[cell]:
             malus += 5
         # Si la cellule a été classée comme dangereuse, on considère un malus
-        elif cell in danger_zone.keys() and danger_zone[cell] == True:
+        elif cell in danger_zone.keys() and danger_zone[cell] is True:
             malus += 5
         # Vérification si la cellule est potentiellement dans la vue d'un garde (utilisation SOLVEUR)
         # elif could_be_in_dangerous_zone(cell) : malus +=5
@@ -613,10 +626,11 @@ def init_solving(hauteur: int, largeur: int, nb_guardes: int, nb_civils: int):
 
 def launch_exploration(status, hr):
     # Lecture et enregistrement des informations initiales
-    init_exploration(status['m'], status['n'], status['guard_count'], status['civil_count'])
+    init_exploration(
+        status["m"], status["n"], status["guard_count"], status["civil_count"]
+    )
     # Début de l'exploration
-    explore(hr,status)
-
+    explore(hr, status)
 
 
 ############################################### CONTRAINTES ###############################################
@@ -765,11 +779,11 @@ def constraints_listener(position: Tuple[int, int], heard: int) -> ClauseBase:
     for col in range(col_min, col_max + 1):
         for row in range(row_min, row_max + 1):
             # Si la cellule est déjà connue, on l'enlève des variables
-            if not (col, row) in known_cells.keys():
+            if not (col, row) in known_cells:
                 variables.append(cell_to_variable((col, row), HC.GUARD_N))
                 variables.append(cell_to_variable((col, row), HC.CIVIL_N))
             # Si la cellule contient un garde,
-            if (col, row) in known_guards.keys():
+            if (col, row) in known_guards:
                 really_heard -= 1
 
     if really_heard < 5:
@@ -781,7 +795,7 @@ def constraints_listener(position: Tuple[int, int], heard: int) -> ClauseBase:
 
 
 def generate_constraints():
-    global clauseBase, guard_count, civil_count
+    global clauseBase
     # clauseBase = create_cell_constraints() + create_objects_constraints() + create_npc_constraints(guard_count,civil_count)
     clauseBase = create_cell_constraints() + create_objects_constraints()
 
@@ -800,9 +814,9 @@ def clauses_to_dimacs(clauses: ClauseBase, nb_vars: int, header: bool) -> str:
     return file
 
 
-def write_dimacs_file(dimacs: str, filename: str):
+def write_dimacs_file(dimacs_t: str, filename: str):
     with open(filename, "w", newline="") as cnf:
-        cnf.write(dimacs)
+        cnf.write(dimacs_t)
 
 
 def exec_gophersat(
