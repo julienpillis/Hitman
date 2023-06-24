@@ -291,6 +291,7 @@ Après vérification sur les ordinateurs de l'école, l'ensemble des modules son
 
 ## Mise en route du programme
 
+**ATTENTION** : Il faut s'assurer que le solveur soit bien mis en place. Pour notre part, nous avions placé l'exécutable dans le dossier, et cela fonctionnait !
 
 Comme démontré précédemment, le projet fonctionne en deux phases.
 
